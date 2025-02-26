@@ -232,6 +232,13 @@ export class ErrorHandler {
   }
   
   /**
+   * Clear all stored errors
+   */
+  public clearErrors(): void {
+    this.errors.clear();
+  }
+  
+  /**
    * Add a listener for errors
    * @param listener The listener function
    * @returns A function to remove the listener

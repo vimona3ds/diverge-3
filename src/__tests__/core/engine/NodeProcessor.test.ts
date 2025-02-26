@@ -124,7 +124,7 @@ describe('NodeProcessor', () => {
           type: 'processNode',
           process: (node: INode) => {
             // Process node doubles the input value
-            const inputValue = node.inputs.input1.data;
+            const inputValue = node.inputs.input1.data as number | undefined;
             node.outputs.output1.data = inputValue ? inputValue * 2 : 0;
           }
         };
@@ -356,14 +356,14 @@ describe('NodeProcessor', () => {
       // Dependency ordering:
       // Node1 should be early because it has no inputs
       // Node4 should be last because it depends on both Node2 and Node3
-      const node1Index = sortedNodes.findIndex(n => n.id === 'node1');
-      const node4Index = sortedNodes.findIndex(n => n.id === 'node4');
+      const node1Index = sortedNodes.findIndex((n: { id: string }) => n.id === 'node1');
+      const node4Index = sortedNodes.findIndex((n: { id: string }) => n.id === 'node4');
       
       expect(node1Index).toBeLessThan(node4Index);
       
       // Node2 and Node3 both depend on Node1, so they should be after Node1
-      const node2Index = sortedNodes.findIndex(n => n.id === 'node2');
-      const node3Index = sortedNodes.findIndex(n => n.id === 'node3');
+      const node2Index = sortedNodes.findIndex((n: { id: string }) => n.id === 'node2');
+      const node3Index = sortedNodes.findIndex((n: { id: string }) => n.id === 'node3');
       
       expect(node1Index).toBeLessThan(node2Index);
       expect(node1Index).toBeLessThan(node3Index);

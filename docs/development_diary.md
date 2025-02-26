@@ -4,7 +4,7 @@
 
 This project aims to create a desktop web application where users can create real-time audiovisual experiences using a node-based editor. It leverages techniques like metaballs, reaction-diffusion, feedback loops, and fractal mathematics for visuals, combined with procedural and sample-based audio synthesis through the Web Audio API.
 
-## Current Project Status (As of [Current Date])
+## Current Project Status (As of March 28, 2024)
 
 The project is in early development with the basic architectural framework implemented. The core infrastructure including the main application layout, engine, node editor system, and basic type definitions are in place. However, specific visual and audio technique implementations (metaballs, reaction-diffusion, granular synthesis, etc.) have not yet been started.
 
@@ -44,12 +44,16 @@ The project is in early development with the basic architectural framework imple
 - ✅ Improved type safety in NodeProcessor
 - ✅ Enhanced AssetManager with better error handling
 - ✅ Refined Scheduler implementation with precise timing
+- ✅ Fixed circular dependency issues in test files
+- ✅ Improved cycle detection in NodeProcessor
 
 **In Progress:**
-- 🔄 Integration tests for Engine with all systems
+- 🔄 Integration tests for Engine with all systems 
+- 🔄 Fixing remaining test failures for better test coverage
 
 **Next Steps:**
-- ❌ Integration tests for Engine with all systems
+- ❌ Complete remaining test fixes, particularly in Scheduler and AssetManager
+- ❌ Implement full integration tests for the Engine with all systems
 
 **Notes:**
 - The Engine now features a robust error handling system with different recovery strategies (CONTINUE, RETRY, FALLBACK, RESET) for each subsystem.
@@ -79,17 +83,22 @@ The project is in early development with the basic architectural framework imple
   - Enhanced debugging capabilities with self-time tracking in profiler
   - More accurate performance metrics with proper statistical analysis
 
-Latest improvements (as of [Current Date]):
-- Fixed TypeScript errors in NodeProcessor implementation by improving port type compatibility checks
-- Enhanced AssetManager with better error handling and resource cleanup
-- Refined Scheduler implementation with more precise timing and FPS control
-- Improved test coverage for edge cases and error conditions
-- Added better type safety throughout the core components
-- Enhanced error handling with more detailed stack traces and error relationships
-- Optimized performance monitoring with nested mark tracking
-- Improved memory management with smarter cleanup strategies
+Latest improvements (as of March 28, 2024):
+- Fixed circular dependency issues in the Engine.test.ts file by properly mocking ErrorSeverity
+- Enhanced cycle detection in NodeProcessor.ts to prevent infinite recursion with circular dependencies
+- Improved type safety and error handling in test files, particularly with FileReader mocking
+- Fixed issues with async test execution and proper cleanup between tests
+- Added better handling of circular references in the component graph
+- Implemented more robust mocking of browser APIs for reliable testing
 
-The Core Engine is now in a very robust state with comprehensive error handling, performance monitoring, and type safety. The recent improvements have significantly enhanced its reliability and maintainability. The next focus should be on completing the integration tests to ensure all systems work together seamlessly.
+Several testing challenges have been addressed:
+1. **Circular Dependencies**: Fixed circular imports between ErrorHandler and test files by creating local mocks.
+2. **Infinite Recursion**: Improved cycle detection in NodeProcessor to prevent stack overflows.
+3. **Testing Browser APIs**: Created proper TypeScript-compatible mocks for browser APIs like FileReader.
+4. **Asynchronous Tests**: Improved handling of async operations in tests to prevent test contamination.
+5. **Mocking Challenges**: Enhanced the mocking approach for complex services and systems.
+
+The Core Engine is now more robust with these fixes, particularly in handling cyclic node graphs and preventing infinite recursion during processing. Continued focus on test improvements will ensure all components work together seamlessly.
 
 ### Node Editor System
 
@@ -215,12 +224,13 @@ The Core Engine is now in a very robust state with comprehensive error handling,
 
 Based on the current state, here are the recommended next steps in order of priority:
 
-1. **Complete Visual Techniques**: Implement at least one visual technique (metaballs) with shaders to have a visible output.
-2. **Complete Audio Techniques**: Implement basic oscillator and effect nodes to have audible output.
-3. **Implement Bridge System**: Create the visual-audio synchronization to demonstrate the core concept.
-4. **Add Viewport Controls**: Implement play/pause and reset controls for the renderer.
-5. **Polish UI**: Enhance the user interface for better usability.
-6. **Optimization**: Apply performance monitoring and optimization strategies to ensure smooth operation.
+1. **Complete Core Test Suite**: Finish fixing the test failures in Scheduler and other services to ensure the engine is stable.
+2. **Complete Visual Techniques**: Implement at least one visual technique (metaballs) with shaders to have a visible output.
+3. **Complete Audio Techniques**: Implement basic oscillator and effect nodes to have audible output.
+4. **Implement Bridge System**: Create the visual-audio synchronization to demonstrate the core concept.
+5. **Add Viewport Controls**: Implement play/pause and reset controls for the renderer.
+6. **Polish UI**: Enhance the user interface for better usability.
+7. **Optimization**: Apply performance monitoring and optimization strategies to ensure smooth operation.
 
 ## Technical Observations
 
@@ -231,6 +241,7 @@ Based on the current state, here are the recommended next steps in order of prio
 - The project uses modern JavaScript features and TypeScript for type safety.
 - The Core Engine is now very robust with comprehensive error handling, performance monitoring, and resource management.
 - The Node Editor system has been significantly enhanced with group and parameter functionality, making it more user-friendly.
+- Circular dependencies and infinite recursion patterns have been eliminated through careful refactoring and cycle detection.
 
 ## Reference Information
 
@@ -271,5 +282,8 @@ npm run build
 - **Browser Compatibility**: WebGL2 and AudioWorklet support varies across browsers.
 - **Resource Management**: WebGL resources need careful management to avoid memory leaks.
 - **UI Complexity**: The node editor requires complex interaction patterns.
+- **Testing Challenges**: Mocking browser APIs (especially FileReader, AudioContext) requires careful implementation.
+- **Circular Dependencies**: Need to be vigilant about avoiding circular imports between modules.
+- **Cyclic Node Graphs**: Must handle user-created circular node connections gracefully.
 
 I'll continue to update this diary as development progresses.

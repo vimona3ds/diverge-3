@@ -45,7 +45,14 @@ export class NodeProcessor {
    * @param context The processing context
    */
   private processNode(node: INode, context: ProcessContext): void {
-    if (node.processed) return;
+    // Skip already processed nodes
+    if (node.processed) {
+      return;
+    }
+    
+    // Mark this node as currently being processed 
+    // (to detect cycles during traversal)
+    node.processed = true;
     
     // Process all input nodes first
     for (const [inputId, input] of Object.entries(node.inputs)) {
@@ -58,8 +65,12 @@ export class NodeProcessor {
         if (connection) {
           const sourceNode = this.graph.nodes[connection.sourceNodeId];
           if (sourceNode) {
-            // Process source node first to ensure data is available
-            this.processNode(sourceNode, context);
+            // Check for cycles - if this node is already being processed,
+            // we have a cycle, so skip processing to avoid infinite recursion
+            if (!sourceNode.processed) {
+              // Process source node first to ensure data is available
+              this.processNode(sourceNode, context);
+            }
             
             // Transfer data from output to input with type checking
             const sourceOutput = sourceNode.outputs[connection.sourcePortId];
@@ -80,8 +91,6 @@ export class NodeProcessor {
         console.error(`Error processing node "${node.type}" (${node.id}):`, error);
       }
     }
-    
-    node.processed = true;
   }
   
   /**

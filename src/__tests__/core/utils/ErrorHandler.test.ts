@@ -1,5 +1,23 @@
 import { ErrorHandler, ErrorSeverity, ErrorInfo, wrapAsync } from '../../../../src/core/utils/ErrorHandler';
 
+// Mock PromiseRejectionEvent since it doesn't exist in Jest environment
+class MockPromiseRejectionEvent {
+  type: string;
+  promise: Promise<any>;
+  reason: any;
+  defaultPrevented: boolean = false;
+
+  constructor(type: string, init: { promise: Promise<any>, reason: any }) {
+    this.type = type;
+    this.promise = init.promise;
+    this.reason = init.reason;
+  }
+
+  preventDefault() {
+    this.defaultPrevented = true;
+  }
+}
+
 describe('ErrorHandler', () => {
   let errorHandler: ErrorHandler;
   
@@ -148,14 +166,14 @@ describe('ErrorHandler', () => {
   describe('promise rejection handling', () => {
     it('should handle promise rejection events', () => {
       const reason = new Error('Promise rejected');
-      const event = new PromiseRejectionEvent('unhandledrejection', {
-        promise: Promise.reject(reason),
+      const event = new MockPromiseRejectionEvent('unhandledrejection', {
+        promise: Promise.reject(reason).catch(() => {}), // Catch to prevent actual unhandled rejection
         reason: reason
       });
       
       const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
       
-      errorHandler.handlePromiseRejection(event);
+      errorHandler.handlePromiseRejection(event as any);
       
       // Check if error was reported
       const errors = errorHandler.getErrors();
@@ -169,12 +187,12 @@ describe('ErrorHandler', () => {
     
     it('should handle promise rejections with non-Error objects', () => {
       const reason = 'String rejection reason';
-      const event = new PromiseRejectionEvent('unhandledrejection', {
-        promise: Promise.reject(reason),
+      const event = new MockPromiseRejectionEvent('unhandledrejection', {
+        promise: Promise.reject(reason).catch(() => {}), // Catch to prevent actual unhandled rejection
         reason: reason
       });
       
-      errorHandler.handlePromiseRejection(event);
+      errorHandler.handlePromiseRejection(event as any);
       
       // Check if error was reported
       const errors = errorHandler.getErrors();

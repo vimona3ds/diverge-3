@@ -1,6 +1,70 @@
 import { AssetManager } from '../../../../src/services/asset-manager/AssetManager';
 import { IGraph, INode } from '../../../../src/core/types/node';
 
+// Patch for the tests using FileReader
+declare global {
+  interface FileReader {
+    // Allow writing to the error property in tests
+    error: any;
+  }
+}
+
+// Create constants for the FileReader static properties
+const READER_STATES = {
+  EMPTY: 0,
+  LOADING: 1,
+  DONE: 2
+} as const;
+
+// Custom FileReader mock implementation
+class MockFileReader {
+  static readonly EMPTY = READER_STATES.EMPTY;
+  static readonly LOADING = READER_STATES.LOADING;
+  static readonly DONE = READER_STATES.DONE;
+  
+  readAsArrayBuffer: jest.Mock;
+  readAsText: jest.Mock;
+  abort: jest.Mock;
+  result: any;
+  readyState: number;
+  onload: ((this: FileReader, evt: ProgressEvent<FileReader>) => any) | null;
+  onerror: ((this: FileReader, evt: ProgressEvent<FileReader>) => any) | null;
+  
+  // Use a writable error property for testing
+  private _error: any = null;
+  get error(): any {
+    return this._error;
+  }
+  set error(value: any) {
+    this._error = value;
+  }
+  
+  constructor() {
+    this.readyState = MockFileReader.EMPTY;
+    this.result = null;
+    this.onload = null;
+    this.onerror = null;
+    
+    this.readAsArrayBuffer = jest.fn((blob: Blob) => {
+      setTimeout(() => {
+        this.result = new ArrayBuffer(0);
+        this.readyState = MockFileReader.DONE;
+        if (this.onload) this.onload(null as any);
+      }, 0);
+    });
+    
+    this.readAsText = jest.fn((blob: Blob) => {
+      setTimeout(() => {
+        this.result = '';
+        this.readyState = MockFileReader.DONE;
+        if (this.onload) this.onload(null as any);
+      }, 0);
+    });
+    
+    this.abort = jest.fn();
+  }
+}
+
 describe('AssetManager', () => {
   let assetManager: AssetManager;
   let originalFileReader: typeof FileReader;
@@ -10,20 +74,20 @@ describe('AssetManager', () => {
     originalFileReader = global.FileReader;
     
     // Mock FileReader implementation
-    const mockImplementation = function(this: any) {
+    const mockFileReader = jest.fn().mockImplementation(function(this: any) {
       this.readAsArrayBuffer = jest.fn().mockImplementation((blob: Blob) => {
         setTimeout(() => {
           this.result = new ArrayBuffer(0);
-          this.readyState = mockImplementation.DONE;
-          if (this.onload) this.onload(null as any);
+          this.readyState = 2; // DONE
+          if (this.onload) this.onload({ target: this } as any);
         }, 0);
       });
       
       this.readAsText = jest.fn().mockImplementation((blob: Blob) => {
         setTimeout(() => {
           this.result = '';
-          this.readyState = mockImplementation.DONE;
-          if (this.onload) this.onload(null as any);
+          this.readyState = 2; // DONE
+          if (this.onload) this.onload({ target: this } as any);
         }, 0);
       });
       
@@ -32,20 +96,16 @@ describe('AssetManager', () => {
       this.error = null;
       this.onload = null;
       this.onerror = null;
-      this.readyState = mockImplementation.EMPTY;
-      
-      return this;
-    };
-    
-    // Add static properties
-    Object.defineProperties(mockImplementation, {
-      EMPTY: { value: 0 },
-      LOADING: { value: 1 },
-      DONE: { value: 2 }
+      this.readyState = 0; // EMPTY
     });
     
+    // Add static properties
+    (mockFileReader as any).EMPTY = 0;
+    (mockFileReader as any).LOADING = 1;
+    (mockFileReader as any).DONE = 2;
+    
     // Replace global FileReader
-    global.FileReader = mockImplementation as unknown as typeof FileReader;
+    global.FileReader = mockFileReader as unknown as typeof FileReader;
     
     assetManager = new AssetManager();
   });

@@ -5,17 +5,27 @@ import { MemoryMonitor } from '../../../../src/core/utils/MemoryMonitor';
 import { Profiler } from '../../../../src/core/utils/Profiler';
 
 // Mock dependencies
-jest.mock('../../../../src/core/utils/ErrorHandler', () => ({
-  ErrorHandler: {
-    getInstance: jest.fn().mockReturnValue({
-      addListener: jest.fn(),
-      report: jest.fn(),
-      dispose: jest.fn(),
-      clear: jest.fn()
-    })
-  },
-  ErrorSeverity
-}));
+jest.mock('../../../../src/core/utils/ErrorHandler', () => {
+  // Create local copy of ErrorSeverity to avoid circular reference
+  const MockErrorSeverity = {
+    INFO: 'info',
+    WARNING: 'warning',
+    ERROR: 'error',
+    FATAL: 'fatal'
+  };
+  
+  return {
+    ErrorHandler: {
+      getInstance: jest.fn().mockReturnValue({
+        addListener: jest.fn(),
+        report: jest.fn(),
+        dispose: jest.fn(),
+        clear: jest.fn()
+      })
+    },
+    ErrorSeverity: MockErrorSeverity
+  };
+});
 
 jest.mock('../../../../src/core/utils/MemoryMonitor', () => ({
   MemoryMonitor: {

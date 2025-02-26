@@ -388,7 +388,10 @@ export class Engine {
       frame: this.frameCount,
       renderer: this.visualSystem.getRenderer(),
       audioContext: this.audioSystem.getContext(),
-      assets: this.assetManager
+      assets: this.assetManager.getAllAssets().reduce((acc, asset) => {
+        acc[asset.id] = asset.data;
+        return acc;
+      }, {} as Record<string, unknown>)
     };
     
     try {
