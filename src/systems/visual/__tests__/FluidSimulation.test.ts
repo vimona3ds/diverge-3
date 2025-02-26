@@ -71,7 +71,7 @@ jest.mock('three', () => {
     u_dissipation: { value: 0.97 },
     u_densityDissipation: { value: 0.98 },
     u_velocityDissipation: { value: 0.99 },
-    u_curl: { value: 20 },
+    u_curlStrength: { value: 20 },
     u_radius: { value: 0.3 }
   };
   
