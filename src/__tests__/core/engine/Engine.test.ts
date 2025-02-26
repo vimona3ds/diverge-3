@@ -61,7 +61,8 @@ jest.mock('../../../../src/services/asset-manager/AssetManager', () => {
       getAssetByPath: jest.fn(),
       loadAsset: jest.fn(),
       cleanUnusedAssets: jest.fn(),
-      dispose: jest.fn().mockResolvedValue({})
+      dispose: jest.fn().mockResolvedValue({}),
+      getAllAssets: jest.fn().mockReturnValue([])
     }))
   };
 });
@@ -72,7 +73,11 @@ jest.mock('../../../../src/services/scheduler/Scheduler', () => {
       initialize: jest.fn(),
       schedule: jest.fn(),
       update: jest.fn(),
-      dispose: jest.fn()
+      dispose: jest.fn(),
+      setCallback: jest.fn(),
+      getCurrentFPS: jest.fn().mockReturnValue(60),
+      start: jest.fn(),
+      stop: jest.fn()
     }))
   };
 });
@@ -91,8 +96,10 @@ jest.mock('../../../../src/systems/visual/VisualSystem', () => {
     VisualSystem: jest.fn().mockImplementation(() => ({
       initialize: jest.fn().mockResolvedValue({}),
       render: jest.fn(),
+      update: jest.fn(),
       cleanResourcePools: jest.fn(),
-      dispose: jest.fn().mockResolvedValue({})
+      dispose: jest.fn().mockResolvedValue({}),
+      getRenderer: jest.fn().mockReturnValue({})
     }))
   };
 });
@@ -195,7 +202,11 @@ describe('Engine', () => {
   });
   
   describe('lifecycle management', () => {
-    it('should start and stop properly', () => {
+    it('should start and stop properly', async () => {
+      // Initialize engine first to clear the needsInitialization flag
+      await engine.initialize();
+      
+      // Then test start/stop
       engine.start();
       expect((engine as any).running).toBe(true);
       expect(window.requestAnimationFrame).toHaveBeenCalled();

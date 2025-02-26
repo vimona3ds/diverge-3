@@ -28,14 +28,18 @@
 - ✅ Refined Scheduler implementation with precise timing
 - ✅ Fixed circular dependency issues in test files
 - ✅ Improved cycle detection in NodeProcessor
+- ✅ Fixed mock implementations in Engine tests
 
 **In Progress:**
 - 🔄 Integration tests for Engine with all systems 
 - 🔄 Fixing remaining test failures for better test coverage
+- 🔄 Addressing TypeScript errors in AssetManager tests
 
 **Next Steps:**
-- ❌ Complete remaining test fixes, particularly in Scheduler and AssetManager
+- ❌ Complete remaining test fixes in Scheduler tests
+- ❌ Fix TypeScript errors in AssetManager tests related to FileReader mock
 - ❌ Implement full integration tests for the Engine with all systems
+- ❌ Improve API consistency between mock implementations and actual components
 
 **Notes:**
 - The Engine now features a robust error handling system with different recovery strategies (CONTINUE, RETRY, FALLBACK, RESET) for each subsystem.
@@ -65,25 +69,24 @@
   - Enhanced debugging capabilities with self-time tracking in profiler
   - More accurate performance metrics with proper statistical analysis
 
-Latest improvements (as of April 5, 2024):
-- Fixed import paths and type issues in AssetManager tests, making them compatible with the current implementation
-- Improved Engine memory management by implementing a proper checkMemoryUsage method that periodically monitors memory usage
-- Enhanced Scheduler test mocking approach to correctly handle requestAnimationFrame and cancelAnimationFrame
-- Fixed circular dependencies in test mocks for better testing stability
-- Improved the mock implementations for FileReader in the AssetManager tests
-- Fixed test assertions to accommodate how data is actually accessed and stored in the engine
-- Made the Engine update method properly check memory usage every 60 frames rather than every 10 frames
-- Implemented better resource cleanup in the Node Processor to prevent memory leaks during graph traversal
-- Fixed type compatibility checking between node ports to ensure proper data flow
-- Added safeguards against potential infinite recursion in graph processing
+Latest improvements (as of April 10, 2024):
+- Fixed API mismatches between the Scheduler implementation and its tests
+- Updated mock objects in Engine tests to include all required methods
+- Fixed lifecycle management tests for the Engine by properly initializing before testing start/stop
+- Added missing methods to mocks: getAllAssets, setCallback, getCurrentFPS, getRenderer, update
+- Improved test setup for Scheduler by setting proper running state and interval values
+- Started addressing TypeScript errors in AssetManager tests but some still remain
+- Improved test stability by ensuring the running state is properly set before testing
 
 Remaining challenges and TODOs:
-1. **Integration Testing**: Need to create comprehensive integration tests that verify all Core Engine components work together properly
-2. **Memory Optimization**: Further optimization of memory usage during graph processing for large node networks
-3. **Edge Case Handling**: Improve error recovery for edge cases like disconnected nodes or malformed graphs
-4. **Performance Profiling**: Add more granular performance metrics for complex node processing scenarios
-5. **Test Mocking Strategy**: Develop a more consistent approach to mocking browser APIs across all test files
-6. **Type Safety**: Ensure full type safety across the entire codebase, especially in test files
-7. **Documentation**: Add more comprehensive documentation for the Core Engine public API
+1. **Test Failures**: Some tests in Scheduler and Engine are still failing and need further investigation
+2. **TypeScript Errors**: The AssetManager tests have TypeScript errors related to the FileReader mock:
+   - The 'error' property declaration conflicts with the DOM lib.d.ts declaration
+   - ProgressEvent initialization with 'target' property is not valid in ProgressEventInit type
+3. **Mock Implementation**: There's inconsistency between actual implementations and mocks that needs to be resolved
+4. **Integration Testing**: Need to complete proper integration tests that verify all Engine components work together
+5. **API Standardization**: Ensure consistent API across all components and their mocks
+6. **Documentation**: Update documentation to reflect the actual implementations and API
+7. **Performance Testing**: Add more comprehensive performance tests for Engine under load
 
-The Core Engine feature is now in good shape with most of the foundational components working correctly. The main focus now is on fixing the remaining test failures and implementing proper integration tests to ensure all parts of the engine work together seamlessly. 
+The Core Engine feature is progressing well, with most of the basic functionality now tested and working. The focus is now on fixing the remaining test failures, addressing TypeScript errors, and completing proper integration tests. 

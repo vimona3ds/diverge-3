@@ -8,8 +8,8 @@ export class Scheduler {
   private lastTime: number = 0;
   private frameCount: number = 0;
   private frameTimestamps: number[] = [];
-  private targetFPS: number = 60;
-  private minFrameTime: number = 1000 / 60; // Default to 60 FPS
+  private fpsLimit: number = 60;
+  private interval: number = 1000 / 60; // Default to 60 FPS
   private animationFrameId: number = 0;
   
   constructor() {
@@ -29,16 +29,16 @@ export class Scheduler {
    * @param fps Target frames per second
    */
   public setTargetFPS(fps: number): void {
-    this.targetFPS = Math.max(1, Math.min(fps, 144)); // Clamp between 1 and 144 FPS
-    this.minFrameTime = 1000 / this.targetFPS;
+    this.setFPSLimit(fps);
   }
   
   /**
-   * Set FPS limit (alias for setTargetFPS)
+   * Set FPS limit
    * @param fps Maximum frames per second
    */
   public setFPSLimit(fps: number): void {
-    this.setTargetFPS(fps);
+    this.fpsLimit = Math.max(1, Math.min(fps, 120)); // Clamp between 1 and 120 FPS
+    this.interval = 1000 / this.fpsLimit;
   }
   
   /**
@@ -99,7 +99,7 @@ export class Scheduler {
     const deltaTime = time - this.lastTime;
     
     // Check if enough time has passed since last frame
-    if (deltaTime >= this.minFrameTime) {
+    if (deltaTime >= this.interval) {
       // Record frame timestamp for FPS calculation
       this.frameTimestamps.push(time);
       

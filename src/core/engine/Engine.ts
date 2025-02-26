@@ -374,12 +374,11 @@ export class Engine {
   /**
    * Update callback for each frame
    * @param time Current time in milliseconds
+   * @param deltaTime Time since last frame in milliseconds
    */
-  private update(time: number): void {
+  private update = (time: number, deltaTime: number): void => {
     this.profiler.start('engine-update');
     
-    const deltaTime = time - this.lastTime;
-    this.lastTime = time;
     this.frameCount++;
     
     const context: ProcessContext = {
@@ -402,38 +401,50 @@ export class Engine {
         this.profiler.end('node-processing');
       }
       
-      // Update visual system based on processed nodes
+      // Update visual system if healthy
       if (this.systemStatus.visualSystem) {
         this.profiler.start('visual-update');
         this.visualSystem.update(time, deltaTime);
         this.profiler.end('visual-update');
       }
       
-      // Extract data for audio from visuals if needed
-      let visualData = undefined;
-      if (this.systemStatus.visualSystem) {
-        this.profiler.start('visual-data-extraction');
-        visualData = this.visualSystem.extractData();
-        this.profiler.end('visual-data-extraction');
-      }
-      
-      // Update audio system
+      // Update audio system if healthy
       if (this.systemStatus.audioSystem) {
         this.profiler.start('audio-update');
-        this.audioSystem.update(time, deltaTime, visualData);
+        this.audioSystem.update(time, deltaTime);
         this.profiler.end('audio-update');
       }
+      
+      // Check memory usage periodically
+      if (this.frameCount % 60 === 0) {
+        this.checkMemoryUsage();
+      }
+
     } catch (error) {
       this.errorHandler.report(
-        'Error in engine update loop',
+        'Error in update loop',
         'Engine',
         ErrorSeverity.ERROR,
         error instanceof Error ? error.message : String(error),
         error
       );
+    } finally {
+      this.profiler.end('engine-update');
     }
-    
-    this.profiler.end('engine-update');
+  }
+
+  /**
+   * Check memory usage and perform cleanup if needed
+   */
+  private checkMemoryUsage(): void {
+    const memoryInfo = this.memoryMonitor.getMemoryInfo();
+    if (memoryInfo && memoryInfo.percent > 0.8) {  // 80% threshold
+      // Clean up resource pools
+      this.visualSystem.cleanResourcePools();
+      
+      // Force garbage collection hint
+      this.forceGarbageCollectionHint();
+    }
   }
 
   /**

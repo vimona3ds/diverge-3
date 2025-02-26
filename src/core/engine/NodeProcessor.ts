@@ -149,7 +149,7 @@ export class NodeProcessor {
         temp.delete(nodeId);
         
         // Add to sorted order
-        order.unshift(node);
+        order.push(node);
       }
     };
     

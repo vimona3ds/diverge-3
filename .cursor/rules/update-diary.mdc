@@ -1,8 +1,8 @@
 ---
-description: Updating development diary and reflecting on progress
-globs: docs/development_diary.md
+description: Updating development diary
+globs: 
 alwaysApply: false
 ---
 Fantastic work! Please reflect on the overall progress for the feature, your current progress on your plan, and what remains as next steps for the feature and your plan. Include notes for anything you would like to keep in mind next time, such as linter errors, TODOs, or mistakes/inefficiencies you may have made. This way, you help yourself be more efficient next time.
 
-Now, update [development_diary.md](mdc:docs/development_diary.md) with all of these details. Be specific and thorough. Next, commit all of the changes in the directory by running "git add ." followed by your commit, including a message that summarizes all of the changes you made.
+Now, update the attached document with all of these details. Be specific and thorough. Next, commit all of the changes in the directory by running "git add ." followed by your commit, including a message that summarizes all of the changes you made.
