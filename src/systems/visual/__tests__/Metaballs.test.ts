@@ -122,8 +122,9 @@ describe('Metaballs', () => {
         { position: new THREE.Vector2(0.5, 0.5), radius: 0.1, strength: 1.0 }
       ],
       threshold: 0.5,
-      color1: new THREE.Color(1, 0, 0),
-      color2: new THREE.Color(0, 0, 1)
+      colorMapping: 'custom',
+      customColorA: new THREE.Color(1, 0, 0),
+      customColorB: new THREE.Color(0, 0, 1)
     };
     
     const material = technique.createMaterial(customParams);
@@ -147,8 +148,9 @@ describe('Metaballs', () => {
         { position: new THREE.Vector2(0.7, 0.7), radius: 0.2, strength: 1.2 }
       ],
       threshold: 0.7,
-      color1: new THREE.Color(0, 1, 0),
-      color2: new THREE.Color(1, 1, 0)
+      colorMapping: 'custom',
+      customColorA: new THREE.Color(0, 1, 0),
+      customColorB: new THREE.Color(1, 1, 0)
     };
     
     technique.updateParams(newParams);
