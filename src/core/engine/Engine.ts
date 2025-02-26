@@ -477,6 +477,7 @@ export class Engine {
     this.audioSystem.dispose();
     this.assetManager.dispose();
     this.memoryMonitor.dispose();
+    this.errorHandler.dispose();
     this.profiler.disable();
   }
 } 

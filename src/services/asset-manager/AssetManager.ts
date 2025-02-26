@@ -21,6 +21,15 @@ export class AssetManager {
   constructor() {}
   
   /**
+   * Initialize the asset manager
+   * @returns A promise that resolves when initialization is complete
+   */
+  public async initialize(): Promise<void> {
+    // Initialize any internal state, cache structures, etc.
+    return Promise.resolve();
+  }
+  
+  /**
    * Set the audio context for audio asset handling
    * @param context The audio context to use
    */

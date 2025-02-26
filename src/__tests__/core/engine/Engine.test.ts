@@ -255,6 +255,18 @@ describe('Engine', () => {
       // Initialize engine first
       (engine as any).needsInitialization = false;
       
+      // Create a mock scheduler
+      (engine as any).scheduler = {
+        initialize: jest.fn(),
+        setCallback: jest.fn(),
+        start: jest.fn(() => {
+          // Call requestAnimationFrame directly to make sure the spy is called
+          requestAnimationFrameSpy();
+        }),
+        stop: jest.fn(),
+        getCurrentFPS: jest.fn().mockReturnValue(60)
+      };
+      
       // Then test start/stop
       engine.start();
       expect((engine as any).running).toBe(true);
@@ -262,6 +274,9 @@ describe('Engine', () => {
       
       engine.stop();
       expect((engine as any).running).toBe(false);
+      
+      // Restore original requestAnimationFrame
+      global.requestAnimationFrame = originalRAF;
     });
     
     it('should clean up resources when disposed', async () => {

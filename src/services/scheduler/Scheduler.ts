@@ -17,6 +17,17 @@ export class Scheduler {
   }
   
   /**
+   * Initialize the scheduler
+   * @returns A promise that resolves when initialization is complete
+   */
+  public initialize(): void {
+    // Initialize any required state
+    this.frameCount = 0;
+    this.frameTimestamps = [];
+    this.lastTime = 0;
+  }
+  
+  /**
    * Set the callback function to be called each frame
    * @param callback The callback function
    */
@@ -86,7 +97,7 @@ export class Scheduler {
    */
   private requestNextFrame(): void {
     if (!this.running) return;
-    this.animationFrameId = requestAnimationFrame(this.updateLoop);
+    this.animationFrameId = global.requestAnimationFrame(this.updateLoop);
   }
   
   /**
