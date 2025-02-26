@@ -14,44 +14,69 @@ export enum PortType {
   ANY = 'any'
 }
 
-export interface IPort {
+export type PortData = {
+  [PortType.FLOAT]: number;
+  [PortType.INT]: number;
+  [PortType.VECTOR2]: THREE.Vector2;
+  [PortType.VECTOR3]: THREE.Vector3;
+  [PortType.COLOR]: THREE.Color;
+  [PortType.TEXTURE]: THREE.Texture;
+  [PortType.AUDIO_PARAM]: AudioParam;
+  [PortType.AUDIO_BUFFER]: AudioBuffer;
+  [PortType.AUDIO_NODE]: AudioNode;
+  [PortType.TRIGGER]: boolean;
+  [PortType.ANY]: unknown;
+};
+
+export interface IPort<T extends PortType = PortType> {
   id: string;
   name: string;
-  type: PortType;
+  type: T;
   nodeId: string;
-  data?: any;
-  allowMultiple?: boolean; // Can connect to multiple outputs
+  data?: PortData[T];
+  allowMultiple?: boolean;
 }
 
-export interface IInputPort extends IPort {
+export interface IInputPort<T extends PortType = PortType> extends IPort<T> {
   connected: boolean;
-  defaultValue?: any;
+  defaultValue?: PortData[T];
 }
 
-export interface IOutputPort extends IPort {
-  connections: string[]; // IDs of input ports this connects to
+export interface IOutputPort<T extends PortType = PortType> extends IPort<T> {
+  connections: string[];
 }
 
 export interface INodeDefinition {
   type: string;
   category: 'source' | 'process' | 'parameter' | 'bridge' | 'output';
   system: 'visual' | 'audio' | 'bridge' | 'utility';
-  inputs: IInputPort[];
-  outputs: IOutputPort[];
+  inputs: Array<Omit<IInputPort, 'nodeId' | 'data' | 'connected'>>;
+  outputs: Array<Omit<IOutputPort, 'nodeId' | 'data' | 'connections'>>;
   params: INodeParam[];
   initialize: (node: INode) => void;
   process: (node: INode, context: ProcessContext) => void;
 }
 
-export interface INodeParam {
+export type ParamType = 'float' | 'int' | 'boolean' | 'string' | 'select' | 'color';
+
+export type ParamValue<T extends ParamType> = 
+  T extends 'float' ? number :
+  T extends 'int' ? number :
+  T extends 'boolean' ? boolean :
+  T extends 'string' ? string :
+  T extends 'select' ? string | number :
+  T extends 'color' ? THREE.Color :
+  never;
+
+export interface INodeParam<T extends ParamType = ParamType> {
   id: string;
   name: string;
-  type: 'float' | 'int' | 'boolean' | 'string' | 'select' | 'color';
-  defaultValue: any;
-  min?: number;
-  max?: number;
-  step?: number;
-  options?: Array<{label: string, value: any}>;
+  type: T;
+  defaultValue: ParamValue<T>;
+  min?: T extends ('float' | 'int') ? number : never;
+  max?: T extends ('float' | 'int') ? number : never;
+  step?: T extends ('float' | 'int') ? number : never;
+  options?: T extends 'select' ? Array<{label: string, value: ParamValue<T>}> : never;
 }
 
 export interface INode {
@@ -60,9 +85,9 @@ export interface INode {
   position: {x: number, y: number};
   inputs: Record<string, IInputPort>;
   outputs: Record<string, IOutputPort>;
-  params: Record<string, any>;
-  state: Record<string, any>; // Internal node state
-  processed: boolean; // For topological sort
+  params: Record<string, ParamValue<ParamType>>;
+  state: Record<string, unknown>;
+  processed: boolean;
 }
 
 export interface IConnection {
@@ -84,5 +109,5 @@ export interface ProcessContext {
   frame: number;
   renderer: THREE.WebGLRenderer;
   audioContext: AudioContext;
-  assets: any; // AssetManager
+  assets: Record<string, unknown>;
 } 

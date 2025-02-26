@@ -1,4 +1,4 @@
-import { IGraph, INode, ProcessContext } from '../types/node';
+import { IGraph, INode, ProcessContext, IInputPort, IOutputPort, PortType, PortData } from '../types/node';
 import { NodeRegistry } from '../nodes/NodeRegistry';
 
 /**
@@ -48,8 +48,7 @@ export class NodeProcessor {
     if (node.processed) return;
     
     // Process all input nodes first
-    for (const inputId in node.inputs) {
-      const input = node.inputs[inputId];
+    for (const [inputId, input] of Object.entries(node.inputs)) {
       if (input.connected) {
         // Find connection to this input
         const connection = Object.values(this.graph.connections).find(c => 
@@ -62,9 +61,9 @@ export class NodeProcessor {
             // Process source node first to ensure data is available
             this.processNode(sourceNode, context);
             
-            // Transfer data from output to input
+            // Transfer data from output to input with type checking
             const sourceOutput = sourceNode.outputs[connection.sourcePortId];
-            if (sourceOutput) {
+            if (sourceOutput && this.arePortsCompatible(sourceOutput, input)) {
               input.data = sourceOutput.data;
             }
           }
@@ -86,27 +85,46 @@ export class NodeProcessor {
   }
   
   /**
+   * Check if two ports are type compatible for connection
+   * @param output The output port
+   * @param input The input port
+   * @returns Whether the ports are compatible
+   */
+  private arePortsCompatible<T extends PortType>(
+    output: IOutputPort<T>,
+    input: IInputPort<T>
+  ): boolean {
+    // ANY type can connect to anything
+    if (output.type === PortType.ANY || input.type === PortType.ANY) {
+      return true;
+    }
+    
+    // Otherwise types must match exactly
+    return output.type === input.type;
+  }
+  
+  /**
    * Sort nodes in topological order (dependencies first)
    * @returns Array of nodes in processing order
    */
   private topologicalSort(): INode[] {
     // Mark all nodes as not visited
-    const visited: Record<string, boolean> = {};
-    const temp: Record<string, boolean> = {};
+    const visited = new Set<string>();
+    const temp = new Set<string>();
     const order: INode[] = [];
     
     // Visit function for depth-first search
-    const visit = (nodeId: string) => {
+    const visit = (nodeId: string): void => {
       // If node is temporarily marked, we have a cycle
-      if (temp[nodeId]) {
+      if (temp.has(nodeId)) {
         console.warn('Cycle detected in node graph, may cause issues');
         return;
       }
       
       // If node is unvisited
-      if (!visited[nodeId]) {
+      if (!visited.has(nodeId)) {
         // Mark temporarily
-        temp[nodeId] = true;
+        temp.add(nodeId);
         
         // Visit all dependencies (connected inputs)
         const node = this.graph.nodes[nodeId];
@@ -118,8 +136,8 @@ export class NodeProcessor {
         }
         
         // Mark as visited
-        visited[nodeId] = true;
-        temp[nodeId] = false;
+        visited.add(nodeId);
+        temp.delete(nodeId);
         
         // Add to sorted order
         order.unshift(node);
@@ -128,7 +146,7 @@ export class NodeProcessor {
     
     // Visit all nodes
     for (const nodeId in this.graph.nodes) {
-      if (!visited[nodeId]) {
+      if (!visited.has(nodeId)) {
         visit(nodeId);
       }
     }

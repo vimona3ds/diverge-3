@@ -3,14 +3,17 @@
  * Provides FPS control and a stable update loop
  */
 export class Scheduler {
-  private callback: ((time: number) => void) | null = null;
+  private callback: ((time: number, deltaTime: number) => void) | null = null;
   private running: boolean = false;
   private frameId: number | null = null;
   private lastTime: number = 0;
+  private lastFrameTime: number = 0;
   private fpsLimit: number = 60;
   private interval: number = 1000 / 60; // Default to 60 FPS
   private frameTimestamps: number[] = [];
   private currentFPS: number = 0;
+  private accumulatedTime: number = 0;
+  private readonly maxDeltaTime: number = 100; // Maximum time step in ms
   
   constructor() {
     this.updateLoop = this.updateLoop.bind(this);
@@ -18,19 +21,25 @@ export class Scheduler {
   
   /**
    * Set the callback function to call each frame
-   * @param callback The function to call each frame
+   * @param callback The function to call each frame with time and deltaTime
    */
-  public setCallback(callback: (time: number) => void): void {
+  public setCallback(callback: (time: number, deltaTime: number) => void): void {
     this.callback = callback;
   }
   
   /**
    * Set the FPS limit for the scheduler
-   * @param fps The maximum frames per second
+   * @param fps The maximum frames per second (1-120)
    */
   public setFPSLimit(fps: number): void {
+    // Clamp FPS between 1 and 120
     this.fpsLimit = Math.max(1, Math.min(120, fps));
     this.interval = 1000 / this.fpsLimit;
+    
+    // Reset timing when FPS limit changes
+    this.accumulatedTime = 0;
+    this.lastTime = performance.now();
+    this.lastFrameTime = this.lastTime;
   }
   
   /**
@@ -46,8 +55,12 @@ export class Scheduler {
    */
   public start(): void {
     if (this.running) return;
+    
     this.running = true;
     this.lastTime = performance.now();
+    this.lastFrameTime = this.lastTime;
+    this.accumulatedTime = 0;
+    this.frameTimestamps = [];
     this.frameId = requestAnimationFrame(this.updateLoop);
   }
   
@@ -56,26 +69,34 @@ export class Scheduler {
    */
   public stop(): void {
     if (!this.running) return;
-    this.running = false;
     
+    this.running = false;
     if (this.frameId !== null) {
       cancelAnimationFrame(this.frameId);
       this.frameId = null;
     }
+    
+    // Clear state
+    this.accumulatedTime = 0;
+    this.frameTimestamps = [];
   }
   
   /**
-   * Calculate the current FPS based on recent frame timestamps
-   * @param time Current time
+   * Calculate the current FPS using exponential moving average
+   * @param deltaTime Time since last frame in milliseconds
    */
-  private calculateFPS(time: number): void {
-    // Keep only the last second of timestamps
-    const oneSecondAgo = time - 1000;
-    this.frameTimestamps.push(time);
-    this.frameTimestamps = this.frameTimestamps.filter(t => t >= oneSecondAgo);
+  private calculateFPS(deltaTime: number): void {
+    // Calculate instantaneous FPS
+    const instantFPS = 1000 / deltaTime;
     
-    // Calculate FPS from number of frames in the last second
-    this.currentFPS = this.frameTimestamps.length;
+    // Use exponential moving average for smoother FPS
+    const alpha = 0.1; // Smoothing factor
+    this.currentFPS = Math.round(
+      alpha * instantFPS + (1 - alpha) * this.currentFPS
+    );
+    
+    // Clamp to reasonable values
+    this.currentFPS = Math.max(0, Math.min(120, this.currentFPS));
   }
   
   /**
@@ -83,24 +104,37 @@ export class Scheduler {
    * @param time Current time in milliseconds
    */
   private updateLoop(time: number): void {
+    if (!this.running) return;
+    
     this.frameId = requestAnimationFrame(this.updateLoop);
     
-    // Calculate current FPS
-    this.calculateFPS(time);
+    // Calculate frame timing
+    const deltaTime = time - this.lastTime;
+    this.lastTime = time;
     
-    // Apply FPS limiting
-    const elapsed = time - this.lastTime;
+    // Accumulate time since last frame
+    this.accumulatedTime += deltaTime;
     
-    if (elapsed < this.interval) {
-      return;
-    }
+    // Limit accumulated time to prevent spiral of death
+    this.accumulatedTime = Math.min(this.accumulatedTime, this.maxDeltaTime);
     
-    // Update time tracking based on FPS limit
-    this.lastTime = time - (elapsed % this.interval);
-    
-    // Call the callback
-    if (this.callback) {
-      this.callback(time);
+    // Update if enough time has accumulated
+    if (this.accumulatedTime >= this.interval) {
+      // Calculate actual frame time for FPS calculation
+      const actualFrameTime = time - this.lastFrameTime;
+      this.lastFrameTime = time;
+      
+      // Update FPS calculation
+      this.calculateFPS(actualFrameTime);
+      
+      // Remove accumulated time
+      this.accumulatedTime -= this.interval;
+      
+      // Call the callback with current time and delta
+      if (this.callback) {
+        // Use fixed time step for stability
+        this.callback(time, this.interval);
+      }
     }
   }
 } 
