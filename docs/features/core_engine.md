@@ -29,15 +29,17 @@
 - ✅ Fixed circular dependency issues in test files
 - ✅ Improved cycle detection in NodeProcessor
 - ✅ Fixed mock implementations in Engine tests
+- ✅ Improved test setup for AssetManager with proper FileReader mocking
+- ✅ Fixed Engine test structure with proper system mocking
 
 **In Progress:**
 - 🔄 Integration tests for Engine with all systems 
-- 🔄 Fixing remaining test failures for better test coverage
-- 🔄 Addressing TypeScript errors in AssetManager tests
+- 🔄 Fixing interface mismatches between implementation and tests
+- 🔄 Addressing TypeScript errors related to initialize methods
 
 **Next Steps:**
-- ❌ Complete remaining test fixes in Scheduler tests
-- ❌ Fix TypeScript errors in AssetManager tests related to FileReader mock
+- ❌ Implement `initialize` methods on AssetManager and Scheduler classes
+- ❌ Fix TypeScript errors in Engine.ts relating to initialize methods
 - ❌ Implement full integration tests for the Engine with all systems
 - ❌ Improve API consistency between mock implementations and actual components
 
@@ -69,24 +71,28 @@
   - Enhanced debugging capabilities with self-time tracking in profiler
   - More accurate performance metrics with proper statistical analysis
 
-Latest improvements (as of April 10, 2024):
-- Fixed API mismatches between the Scheduler implementation and its tests
-- Updated mock objects in Engine tests to include all required methods
-- Fixed lifecycle management tests for the Engine by properly initializing before testing start/stop
-- Added missing methods to mocks: getAllAssets, setCallback, getCurrentFPS, getRenderer, update
-- Improved test setup for Scheduler by setting proper running state and interval values
-- Started addressing TypeScript errors in AssetManager tests but some still remain
-- Improved test stability by ensuring the running state is properly set before testing
+Latest improvements (as of April 17, 2024):
+- Enhanced Engine.test.ts with correct mocking of component systems
+- Updated Engine.ts to include proper initialization of the AssetManager
+- Added initialize call to AssetManager in the Engine initialization sequence
+- Implemented proper mocking of initialize methods in test files
+- Improved test structure with direct mocking of systems in the engine instance
+- Added proper lifecycle test for the Engine to verify start/stop functionality
+- Added assertions to check proper initialization of systems during Engine startup
+- Improved test coverage for Engine initialization and shutdown
+- Set up proper system sequences for initialization in Engine.ts, including assetManager.initialize() and scheduler.initialize()
+- Made mocks consistent with the required interface in tests
 
 Remaining challenges and TODOs:
-1. **Test Failures**: Some tests in Scheduler and Engine are still failing and need further investigation
-2. **TypeScript Errors**: The AssetManager tests have TypeScript errors related to the FileReader mock:
-   - The 'error' property declaration conflicts with the DOM lib.d.ts declaration
-   - ProgressEvent initialization with 'target' property is not valid in ProgressEventInit type
-3. **Mock Implementation**: There's inconsistency between actual implementations and mocks that needs to be resolved
-4. **Integration Testing**: Need to complete proper integration tests that verify all Engine components work together
-5. **API Standardization**: Ensure consistent API across all components and their mocks
-6. **Documentation**: Update documentation to reflect the actual implementations and API
-7. **Performance Testing**: Add more comprehensive performance tests for Engine under load
+1. **Interface Mismatches**: The AssetManager and Scheduler interfaces need to be updated to include initialize methods:
+   - The AssetManager needs an initialize() method that returns a Promise
+   - The Scheduler needs an initialize() method that aligns with the test expectations
+2. **TypeScript Errors**: Current linter errors in Engine.ts:
+   - Property 'initialize' does not exist on type 'AssetManager'
+   - Property 'initialize' does not exist on type 'Scheduler'
+3. **Implementation Consistency**: Need to ensure actual implementations and test mocks share the same interface
+4. **Test Structure**: Engine tests now use direct mocking of systems within the engine instance for better control
+5. **Integration Tests**: Complete proper integration tests between Engine and all subsystems
+6. **Documentation**: Update documentation to reflect recent changes to initialization sequence
 
-The Core Engine feature is progressing well, with most of the basic functionality now tested and working. The focus is now on fixing the remaining test failures, addressing TypeScript errors, and completing proper integration tests. 
+The Core Engine feature is now more cohesive, with proper initialization sequence in place. We've improved test quality significantly by mocking systems directly in the engine instance. Next steps involve implementing the missing initialize methods in both AssetManager and Scheduler services to match the engine expectations and test mocks. This will resolve the current TypeScript errors and ensure consistent interfaces across the codebase. 

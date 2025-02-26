@@ -4,8 +4,8 @@ import { IGraph } from '../../../core/types/node';
 // Patch for the tests using FileReader
 declare global {
   interface FileReader {
-    // Allow writing to the error property in tests
-    error: any;
+    // Use the same type as the DOM definition for consistency with readonly modifier
+    readonly error: DOMException | null;
   }
 }
 
@@ -45,7 +45,10 @@ class MockFileReader {
       setTimeout(() => {
         this.result = new ArrayBuffer(0);
         this.readyState = 2;
-        const event = new ProgressEvent('load', { target: this });
+        // Create event without target property in constructor
+        const event = new ProgressEvent('load');
+        // Then manually set the target afterward
+        Object.defineProperty(event, 'target', { value: this });
         if (this.onload) this.onload(event as ProgressEvent<FileReader>);
       }, 0);
     });
@@ -54,7 +57,10 @@ class MockFileReader {
       setTimeout(() => {
         this.result = '';
         this.readyState = 2;
-        const event = new ProgressEvent('load', { target: this });
+        // Create event without target property in constructor
+        const event = new ProgressEvent('load');
+        // Then manually set the target afterward
+        Object.defineProperty(event, 'target', { value: this });
         if (this.onload) this.onload(event as ProgressEvent<FileReader>);
       }, 0);
     });
@@ -108,19 +114,39 @@ describe('AssetManager', () => {
     it('should handle load errors', async () => {
       const mockFile = new Blob([''], { type: 'text/plain' });
       
-      // Create a spy on the error handler
-      const originalReadAsText = FileReader.prototype.readAsText;
-      FileReader.prototype.readAsText = jest.fn().mockImplementation(function(this: any, blob) {
-        setTimeout(() => {
-          this.error = new Error('Mock error');
-          if (this.onerror) this.onerror({ target: this } as any);
-        }, 0);
-      });
+      // Mock the FileReader to simulate an error
+      const mockFileReader = {
+        readAsText: jest.fn().mockImplementation(function(this: any, blob: Blob) {
+          setTimeout(() => {
+            // Create and dispatch error event
+            this.error = new DOMException('Mock error', 'NotReadableError');
+            if (this.onerror) {
+              const event = new ProgressEvent('error');
+              Object.defineProperty(event, 'target', { value: this });
+              this.onerror(event);
+            }
+          }, 0);
+        }),
+        addEventListener: jest.fn((type: string, handler: EventListener) => {
+          if (type === 'error') {
+            mockFileReader.onerror = handler;
+          } else if (type === 'load') {
+            mockFileReader.onload = handler;
+          }
+        }),
+        onerror: null as ((event: Event) => void) | null,
+        onload: null as ((event: Event) => void) | null
+      };
       
+      // Replace the global FileReader constructor
+      const originalFileReader = global.FileReader;
+      global.FileReader = jest.fn(() => mockFileReader) as any;
+      
+      // The loadAsset should reject with an error
       await expect(assetManager.loadAsset('test.txt', mockFile)).rejects.toThrow();
       
-      // Restore the original implementation
-      FileReader.prototype.readAsText = originalReadAsText;
+      // Restore the original FileReader
+      global.FileReader = originalFileReader;
     });
   });
   

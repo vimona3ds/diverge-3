@@ -122,23 +122,32 @@ describe('Scheduler', () => {
     });
     
     it('should skip frames when needed to maintain FPS limit', () => {
-      // Make sure scheduler is running
+      // Make sure scheduler is running with a clean state
       (scheduler as any).running = true;
-      
-      // First call - should run because enough time has passed
+      (scheduler as any).fpsLimit = 60;
+      (scheduler as any).interval = 16; // Exactly 60 FPS
       (scheduler as any).lastTime = 984; // 16ms before 1000
-      (scheduler as any).updateLoop(1000);
+      
+      // Call the update function directly to simulate a frame
+      (scheduler as any).updateLoop(1000); // Exactly 16ms difference
+      
+      // Mock should have been called exactly once
       expect(mockCallback).toHaveBeenCalledTimes(1);
+      expect(mockCallback).toHaveBeenCalledWith(1000, 16);
+      expect((scheduler as any).lastTime).toBe(1000);
       
       mockCallback.mockClear();
       
-      // Second call - too soon (8ms later)
-      (scheduler as any).updateLoop(1008);
+      // Second call - not enough time passed
+      (scheduler as any).updateLoop(1008); // Only 8ms difference
       expect(mockCallback).not.toHaveBeenCalled();
+      expect((scheduler as any).lastTime).toBe(1000); // Should not update lastTime
       
-      // Third call - enough time passed (16ms later)
-      (scheduler as any).updateLoop(1016);
+      // Third call - enough time passed
+      (scheduler as any).updateLoop(1016); // 16ms from last update
       expect(mockCallback).toHaveBeenCalledTimes(1);
+      expect(mockCallback).toHaveBeenCalledWith(1016, 16);
+      expect((scheduler as any).lastTime).toBe(1016);
     });
   });
   

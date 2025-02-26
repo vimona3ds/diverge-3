@@ -253,11 +253,15 @@ export class Engine {
       
       await this.visualSystem.initialize(document.getElementById('viewport'));
       
+      // Initialize the asset manager
+      await this.assetManager.initialize();
+      
       // Set the audio context in asset manager
       this.assetManager.setAudioContext(this.audioSystem.getContext());
       
       // Set up the scheduler
       this.scheduler.setCallback(this.update);
+      this.scheduler.initialize();
       
       this.needsInitialization = false;
       this.profiler.end('engine-initialization');
