@@ -126,10 +126,7 @@ export class ErrorHandler {
     this.errors.set(id, error);
     
     // Trim old errors if needed
-    if (this.errors.size > this.maxErrors) {
-      const oldestKey = this.errors.keys().next().value;
-      this.errors.delete(oldestKey);
-    }
+    this.pruneOldErrors();
     
     // Notify listeners
     void this.notifyListeners(error);
@@ -283,10 +280,30 @@ export class ErrorHandler {
   }
   
   /**
-   * Clear all errors
+   * Dispose of the error handler, clearing all errors and listeners
    */
-  public clearErrors(): void {
+  public dispose(): void {
+    this.clear();
+    this.errorListeners.clear();
+  }
+  
+  /**
+   * Clear all stored errors
+   */
+  public clear(): void {
     this.errors.clear();
+  }
+  
+  /**
+   * Remove old errors when limit is reached
+   */
+  private pruneOldErrors(): void {
+    while (this.errors.size > this.maxErrors) {
+      const oldestKey = Array.from(this.errors.keys())[0];
+      if (oldestKey) {
+        this.errors.delete(oldestKey);
+      }
+    }
   }
 }
 

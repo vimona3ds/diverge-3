@@ -2,7 +2,7 @@ import { IGraph, INode } from '../../core/types/node';
 
 export interface Asset {
   id: string;
-  type: 'audio' | 'image' | 'video' | 'other';
+  type: 'audio' | 'image' | 'video' | 'text' | 'binary' | 'other';
   name: string;
   data: any; // AudioBuffer, HTMLImageElement, etc.
   metadata?: Record<string, any>;
@@ -14,6 +14,7 @@ export interface Asset {
  */
 export class AssetManager {
   private assets: Map<string, Asset> = new Map();
+  private assetPaths: Map<string, string> = new Map(); // Maps paths to asset IDs
   private audioContext: AudioContext | null = null;
   private unusedThreshold: number = 60000; // 60 seconds
   
@@ -25,6 +26,77 @@ export class AssetManager {
    */
   public setAudioContext(context: AudioContext): void {
     this.audioContext = context;
+  }
+  
+  /**
+   * Load an asset from a file
+   * @param path The path/name to store the asset under
+   * @param file The file to load
+   * @returns A promise resolving to the loaded asset
+   */
+  public async loadAsset(path: string, file: Blob): Promise<Asset> {
+    return new Promise<Asset>((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = async (event) => {
+        try {
+          const asset: Asset = {
+            id: `asset-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+            type: this.determineAssetType(file.type),
+            name: path,
+            data: event.target!.result,
+            metadata: {
+              size: file.size,
+              mimeType: file.type
+            },
+            lastUsed: Date.now()
+          };
+          
+          this.assets.set(asset.id, asset);
+          this.assetPaths.set(path, asset.id);
+          resolve(asset);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to load asset'));
+      };
+      
+      if (file.type.startsWith('text/')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  }
+  
+  /**
+   * Get an asset by its path
+   * @param path The path of the asset
+   * @returns The asset or undefined if not found
+   */
+  public getAssetByPath(path: string): Asset | undefined {
+    const assetId = this.assetPaths.get(path);
+    if (assetId) {
+      return this.getAsset(assetId);
+    }
+    return undefined;
+  }
+  
+  /**
+   * Determine the asset type from a MIME type
+   * @param mimeType The MIME type
+   * @returns The asset type
+   */
+  private determineAssetType(mimeType: string): Asset['type'] {
+    if (mimeType.startsWith('audio/')) return 'audio';
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('text/')) return 'text';
+    if (mimeType === 'application/octet-stream') return 'binary';
+    return 'other';
   }
   
   /**
@@ -246,6 +318,7 @@ export class AssetManager {
    */
   public dispose(): void {
     this.assets.clear();
+    this.assetPaths.clear();
     this.audioContext = null;
   }
 } 

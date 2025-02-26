@@ -1,6 +1,6 @@
 import { Engine, RecoveryStrategy } from '../../../../src/core/engine/Engine';
 import { IGraph, ProcessContext } from '../../../../src/core/types/node';
-import { ErrorHandler } from '../../../../src/core/utils/ErrorHandler';
+import { ErrorHandler, ErrorSeverity } from '../../../../src/core/utils/ErrorHandler';
 import { MemoryMonitor } from '../../../../src/core/utils/MemoryMonitor';
 import { Profiler } from '../../../../src/core/utils/Profiler';
 
@@ -10,19 +10,22 @@ jest.mock('../../../../src/core/utils/ErrorHandler', () => ({
     getInstance: jest.fn().mockReturnValue({
       addListener: jest.fn(),
       report: jest.fn(),
-      removeAllListeners: jest.fn()
+      dispose: jest.fn(),
+      clear: jest.fn()
     })
-  }
+  },
+  ErrorSeverity
 }));
 
 jest.mock('../../../../src/core/utils/MemoryMonitor', () => ({
   MemoryMonitor: {
     getInstance: jest.fn().mockReturnValue({
       addListener: jest.fn(),
-      removeAllListeners: jest.fn(),
+      dispose: jest.fn(),
       check: jest.fn(),
       enable: jest.fn(),
-      disable: jest.fn()
+      disable: jest.fn(),
+      getMemoryInfo: jest.fn().mockReturnValue({ percent: 0.5 })
     })
   }
 }));
@@ -32,9 +35,10 @@ jest.mock('../../../../src/core/utils/Profiler', () => ({
     getInstance: jest.fn().mockReturnValue({
       start: jest.fn(),
       end: jest.fn(),
-      getMetrics: jest.fn().mockReturnValue({}),
+      getSummary: jest.fn().mockReturnValue({}),
       enable: jest.fn(),
-      disable: jest.fn()
+      disable: jest.fn(),
+      clear: jest.fn()
     })
   }
 }));
@@ -198,12 +202,14 @@ describe('Engine', () => {
       const assetManager = (engine as any).assetManager;
       const errorHandler = ErrorHandler.getInstance();
       const memoryMonitor = MemoryMonitor.getInstance();
+      const profiler = Profiler.getInstance();
       
       expect(visualSystem.dispose).toHaveBeenCalled();
       expect(audioSystem.dispose).toHaveBeenCalled();
       expect(assetManager.dispose).toHaveBeenCalled();
-      expect(errorHandler.removeAllListeners).toHaveBeenCalled();
-      expect(memoryMonitor.removeAllListeners).toHaveBeenCalled();
+      expect(errorHandler.dispose).toHaveBeenCalled();
+      expect(memoryMonitor.dispose).toHaveBeenCalled();
+      expect(profiler.disable).toHaveBeenCalled();
       expect((engine as any).running).toBe(false);
     });
   });
@@ -217,16 +223,13 @@ describe('Engine', () => {
       const nodeProcessor = (engine as any).nodeProcessor;
       const visualSystem = (engine as any).visualSystem;
       const audioSystem = (engine as any).audioSystem;
-      const scheduler = (engine as any).scheduler;
-      const profiler = Profiler.getInstance();
       
       // Check that all required components are updated
-      expect(profiler.start).toHaveBeenCalledWith('frame-total');
+      expect(Profiler.getInstance().start).toHaveBeenCalledWith('engine-update');
       expect(nodeProcessor.process).toHaveBeenCalled();
-      expect(visualSystem.render).toHaveBeenCalled();
+      expect(visualSystem.update).toHaveBeenCalled();
       expect(audioSystem.update).toHaveBeenCalled();
-      expect(scheduler.update).toHaveBeenCalled();
-      expect(profiler.end).toHaveBeenCalledWith('frame-total');
+      expect(Profiler.getInstance().end).toHaveBeenCalledWith('engine-update');
     });
     
     it('should handle errors during update without crashing', () => {
@@ -240,15 +243,21 @@ describe('Engine', () => {
       
       // Error handler should be called
       const errorHandler = ErrorHandler.getInstance();
-      expect(errorHandler.report).toHaveBeenCalled();
+      expect(errorHandler.report).toHaveBeenCalledWith(
+        'Error in engine update loop',
+        'Engine',
+        ErrorSeverity.ERROR,
+        'Test error',
+        expect.any(Error)
+      );
     });
   });
   
   describe('performance monitoring', () => {
     it('should return performance metrics', () => {
       const metrics = engine.getPerformanceMetrics();
-      expect(Profiler.getInstance().getMetrics).toHaveBeenCalled();
-      expect(metrics).toBeDefined();
+      expect(Profiler.getInstance().getSummary).toHaveBeenCalled();
+      expect(MemoryMonitor.getInstance().getMemoryInfo).toHaveBeenCalled();
     });
   });
 }); 

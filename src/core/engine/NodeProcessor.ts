@@ -90,9 +90,9 @@ export class NodeProcessor {
    * @param input The input port
    * @returns Whether the ports are compatible
    */
-  private arePortsCompatible<T extends PortType>(
-    output: IOutputPort<T>,
-    input: IInputPort<T>
+  private arePortsCompatible(
+    output: IOutputPort,
+    input: IInputPort
   ): boolean {
     // ANY type can connect to anything
     if (output.type === PortType.ANY || input.type === PortType.ANY) {

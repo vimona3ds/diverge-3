@@ -2,22 +2,24 @@ import { Scheduler } from '../../../../src/services/scheduler/Scheduler';
 
 describe('Scheduler', () => {
   let scheduler: Scheduler;
+  let mockCallback: jest.Mock;
   
   beforeEach(() => {
-    // Mock requestAnimationFrame and cancelAnimationFrame
-    jest.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      return 123 as any; // Return a dummy ID
-    });
-    
-    jest.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {});
-    
-    // Mock performance.now
-    jest.spyOn(performance, 'now').mockReturnValue(1000);
-    
+    jest.useFakeTimers();
     scheduler = new Scheduler();
+    mockCallback = jest.fn();
+    scheduler.setCallback(mockCallback);
+    
+    // Mock requestAnimationFrame
+    jest.spyOn(window, 'requestAnimationFrame')
+      .mockImplementation(cb => {
+        setTimeout(() => cb(performance.now()), 16);
+        return 1;
+      });
   });
   
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
   });
   
@@ -32,17 +34,14 @@ describe('Scheduler', () => {
   
   describe('callback handling', () => {
     it('should set and call the callback function', () => {
-      const mockCallback = jest.fn();
-      scheduler.setCallback(mockCallback);
-      
-      // Manually trigger the update loop
       (scheduler as any).updateLoop(1000);
+      jest.advanceTimersByTime(16);
       
       expect(mockCallback).toHaveBeenCalledWith(1000);
     });
     
     it('should not throw if no callback is set', () => {
-      // Should not throw when no callback is set
+      scheduler.setCallback(null);
       expect(() => {
         (scheduler as any).updateLoop(1000);
       }).not.toThrow();
@@ -91,6 +90,10 @@ describe('Scheduler', () => {
   });
   
   describe('FPS limiting', () => {
+    beforeEach(() => {
+      scheduler.setTargetFPS(60);
+    });
+    
     it('should set the FPS limit', () => {
       scheduler.setFPSLimit(30);
       
@@ -109,57 +112,50 @@ describe('Scheduler', () => {
     });
     
     it('should skip frames when needed to maintain FPS limit', () => {
-      const mockCallback = jest.fn();
-      scheduler.setCallback(mockCallback);
-      scheduler.setFPSLimit(30); // 33.33ms between frames
-      
       // First call - sets lastTime
       (scheduler as any).updateLoop(1000);
+      jest.advanceTimersByTime(16);
       expect(mockCallback).toHaveBeenCalledTimes(1);
       
       mockCallback.mockClear();
       
-      // Second call too soon (only 16ms later) - should not call callback
-      (scheduler as any).updateLoop(1016);
+      // Second call - too soon (8ms later)
+      (scheduler as any).updateLoop(1008);
+      jest.advanceTimersByTime(8);
       expect(mockCallback).not.toHaveBeenCalled();
       
-      mockCallback.mockClear();
-      
-      // Third call after interval (34ms later) - should call callback
-      (scheduler as any).updateLoop(1034);
-      expect(mockCallback).toHaveBeenCalled();
+      // Third call - enough time passed (16ms later)
+      (scheduler as any).updateLoop(1016);
+      jest.advanceTimersByTime(16);
+      expect(mockCallback).toHaveBeenCalledTimes(1);
     });
   });
   
   describe('FPS calculation', () => {
-    it('should calculate the current FPS', () => {
-      // Mock performance.now to return different times for timestamps
-      jest.spyOn(performance, 'now')
-        .mockReturnValueOnce(0)     // First call
-        .mockReturnValueOnce(100)   // Second call
-        .mockReturnValueOnce(200)   // Third call
-        .mockReturnValueOnce(300)   // Fourth call
-        .mockReturnValueOnce(400)   // Fifth call
-        .mockReturnValueOnce(1100); // Final call - 1.1s later
+    it('should calculate FPS based on frame times', () => {
+      // Simulate 4 frames over 1 second
+      const startTime = performance.now();
       
-      // Simulate 5 frames in 1.1 seconds
-      for (let i = 0; i < 5; i++) {
-        (scheduler as any).calculateFPS(performance.now());
+      for (let i = 0; i < 4; i++) {
+        (scheduler as any).updateLoop(startTime + (i * 250));
+        jest.advanceTimersByTime(250);
       }
-      
-      // Calculate FPS one more time, but 1.1s from the start
-      // Only the last 4 frames should be counted (the first one is more than 1s ago)
-      (scheduler as any).calculateFPS(performance.now());
       
       // Should report 4 frames in the last second
       expect(scheduler.getCurrentFPS()).toBe(4);
     });
     
-    it('should return the current FPS', () => {
-      // Set a known FPS value
-      (scheduler as any).currentFPS = 42;
+    it('should handle variable frame times', () => {
+      const startTime = performance.now();
       
-      expect(scheduler.getCurrentFPS()).toBe(42);
+      // Simulate irregular frame times
+      [0, 100, 300, 400, 600].forEach(time => {
+        (scheduler as any).updateLoop(startTime + time);
+        jest.advanceTimersByTime(time);
+      });
+      
+      // Should calculate average FPS over the measured period
+      expect(scheduler.getCurrentFPS()).toBeGreaterThan(0);
     });
   });
   
@@ -217,6 +213,25 @@ describe('Scheduler', () => {
       
       // We should count only the frames in the last second
       expect(scheduler.getCurrentFPS()).toBe(5);
+    });
+  });
+  
+  describe('start/stop', () => {
+    it('should start and stop the update loop', () => {
+      scheduler.start();
+      expect((scheduler as any).running).toBe(true);
+      expect(window.requestAnimationFrame).toHaveBeenCalled();
+      
+      scheduler.stop();
+      expect((scheduler as any).running).toBe(false);
+    });
+    
+    it('should not start multiple loops', () => {
+      scheduler.start();
+      const firstRequestId = (scheduler as any).animationFrameId;
+      
+      scheduler.start();
+      expect((scheduler as any).animationFrameId).toBe(firstRequestId);
     });
   });
 }); 
