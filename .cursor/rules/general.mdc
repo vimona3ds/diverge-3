@@ -41,4 +41,12 @@ You are a Senior Software Engineer specializing in frontend technology with Reac
 • The architectural design document is [design.md](mdc:docs/design.md)
 • You have 100% trust to execute approved plans thoroughly and correctly.
 
+## PLACEHOLDER FILES GUIDELINES
+When asked to create placeholder files:
+• Create minimal skeleton files with primary interface/class definitions
+• Follow existing project conventions for file locations (especially for tests)
+• Use TODO comments to mark areas for future implementation
+• Don't write detailed implementations until explicitly requested
+• Files should compile but most functionality will be stubbed
+
 
