@@ -36,12 +36,18 @@
 - ✅ Improved API consistency between mock implementations and actual components
 - ✅ Fixed lifecycle test issues in Engine tests
 - ✅ Fixed interface mismatches between implementation and tests
+- ✅ Updated Scheduler to use global.requestAnimationFrame for better testability
+- ✅ Ensured proper cleanup with errorHandler.dispose() in Engine.dispose()
+- ✅ Improved test mocking strategies for animation frame handling
 
 **In Progress:**
 - 🔄 Integration tests for Engine with all systems 
 
 **Next Steps:**
 - ❌ Implement full integration tests for the Engine with all systems
+- ❌ Create benchmarking suite to measure performance across different browsers
+- ❌ Optimize memory usage in high-load scenarios
+- ❌ Add more detailed error reporting and recovery mechanisms
 
 **Notes:**
 - The Engine now features a robust error handling system with different recovery strategies (CONTINUE, RETRY, FALLBACK, RESET) for each subsystem.
@@ -83,7 +89,7 @@ Latest improvements (as of April 17, 2024):
 - Set up proper system sequences for initialization in Engine.ts, including assetManager.initialize() and scheduler.initialize()
 - Made mocks consistent with the required interface in tests
 
-Latest fixes (as of April 18, 2024):
+Latest fixes (as of April 19, 2024):
 - Added missing `initialize()` method to the AssetManager class that returns a Promise
 - Added missing `initialize()` method to the Scheduler class
 - Added errorHandler.dispose() call to the Engine's dispose method
@@ -93,4 +99,15 @@ Latest fixes (as of April 18, 2024):
 - Made API consistent between mock implementations and actual components
 - All test suites now pass successfully without any errors
 
-The Core Engine feature is now in a robust state with proper initialization sequences, error handling, and consistent interfaces across all systems. The tests are structured properly, with mocks that accurately reflect the actual implementation. The next step is to implement comprehensive integration tests between the Engine and all subsystems to ensure they work together seamlessly in a variety of scenarios. 
+**Reflections & Lessons Learned:**
+- When developing interfaces for system components, always implement stub methods early to avoid TypeScript errors later
+- Carefully consider how to test animation frame-related code in Node.js environment (where window.requestAnimationFrame doesn't exist)
+- Maintain consistent use of globals vs window-based APIs across codebase
+- Always add dispose methods to every service and ensure they're called properly in cleanup
+- Develop the test and implementation in parallel to catch issues early
+- Mock carefully - ensure your mocks match the real implementation's interface exactly
+- Be mindful of environment differences between browser and test runner
+- Use dependency injection more extensively to improve testability
+- Consider creating more interface files to enforce consistent API shapes
+
+The Core Engine feature is now in a robust state with proper initialization sequences, error handling, and consistent interfaces across all systems. The tests are structured properly, with mocks that accurately reflect the actual implementation. The next phase will focus on integration testing to ensure all subsystems work together seamlessly in various scenarios, optimizing performance in high-load situations, and adding more sophisticated error recovery mechanisms for edge cases. 
