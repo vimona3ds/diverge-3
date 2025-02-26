@@ -26,17 +26,18 @@ describe('ErrorHandler', () => {
     (ErrorHandler as any).instance = undefined;
     errorHandler = ErrorHandler.getInstance();
     
-    // Spy on console methods
-    jest.spyOn(console, 'info').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Reset the mocked console methods before each test
+    // but don't restore the original implementation
+    (console.info as jest.Mock).mockClear();
+    (console.warn as jest.Mock).mockClear();
+    (console.error as jest.Mock).mockClear();
     
     // Clear errors before each test
     errorHandler.clearErrors();
   });
   
   afterEach(() => {
-    jest.restoreAllMocks();
+    // We don't need to restore mocks since we're using the global mocks
   });
   
   describe('getInstance', () => {

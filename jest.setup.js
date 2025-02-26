@@ -50,4 +50,14 @@ global.performance = {
   mark: jest.fn(),
   measure: jest.fn(),
   getEntriesByName: jest.fn(() => [])
+};
+
+// Replace console with mocked implementations to suppress all output
+global.console = {
+  ...console,
+  log: jest.fn(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
 }; 

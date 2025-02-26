@@ -37,6 +37,37 @@ Based on the current state, here are the recommended next steps in order of prio
 - The Node Editor system has been significantly enhanced with group and parameter functionality, making it more user-friendly.
 - Circular dependencies and infinite recursion patterns have been eliminated through careful refactoring and cycle detection.
 
+## Testing Strategy and Progress
+
+### Testing Approach
+- Jest is used as the primary testing framework with ts-jest for TypeScript support
+- Tests are structured in `__tests__` directories parallel to the code they test
+- Core modules have unit tests to ensure functionality and prevent regressions
+- Mocks are extensively used for browser APIs (WebGL, Audio API, Performance API)
+
+### Current Test Status
+- Core engine components have comprehensive test coverage
+- Utility classes (Profiler, ErrorHandler, MemoryMonitor) are thoroughly tested
+- Node processor tests include edge cases like cycles and error conditions
+- Services like Scheduler and AssetManager have basic test coverage
+
+### Recent Improvements
+- Implemented global console mocking to suppress console.log, warn, and error messages during tests
+- This prevents test output pollution while still allowing assertion of console behavior
+- Test output is now cleaner and focused on actual test results
+
+### Testing Challenges
+- Mocking browser APIs requires careful implementation and maintenance
+- Some components are tightly coupled with DOM or WebGL, making testing complex
+- Asynchronous operations and timers require special testing considerations
+- Testing audio and visual output quality remains a challenge
+
+### Next Steps for Testing
+- Implement visual regression testing for UI components
+- Add performance benchmark tests for critical path operations
+- Increase code coverage, especially for edge cases
+- Set up integration tests for complete workflows
+
 ## Reference Information
 
 ### Key Dependencies
