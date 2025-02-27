@@ -321,7 +321,7 @@ export class FeedbackLoop extends BaseTechnique {
    * Update parameters
    */
   public updateParams(params: Partial<FeedbackLoopParams>): void {
-    if (!this.feedbackMaterial) return;
+    if (!this.feedbackMaterial || !this.feedbackMaterial.uniforms) return;
     
     // Update params object
     this.params = {
@@ -332,42 +332,42 @@ export class FeedbackLoop extends BaseTechnique {
     // Update shader uniforms
     const uniforms = this.feedbackMaterial.uniforms;
     
-    if (params.feedbackStrength !== undefined) {
+    if (params.feedbackStrength !== undefined && uniforms.u_feedbackStrength) {
       uniforms.u_feedbackStrength.value = params.feedbackStrength;
     }
     
-    if (params.fadeRate !== undefined) {
+    if (params.fadeRate !== undefined && uniforms.u_fadeRate) {
       uniforms.u_fadeRate.value = params.fadeRate;
     }
     
-    if (params.translateX !== undefined || params.translateY !== undefined) {
+    if ((params.translateX !== undefined || params.translateY !== undefined) && uniforms.u_translation) {
       uniforms.u_translation.value.set(
         params.translateX !== undefined ? params.translateX : this.params.translateX,
         params.translateY !== undefined ? params.translateY : this.params.translateY
       );
     }
     
-    if (params.scale !== undefined) {
+    if (params.scale !== undefined && uniforms.u_scale) {
       uniforms.u_scale.value = params.scale;
     }
     
-    if (params.rotation !== undefined) {
+    if (params.rotation !== undefined && uniforms.u_rotation) {
       uniforms.u_rotation.value = params.rotation;
     }
     
-    if (params.blend !== undefined) {
+    if (params.blend !== undefined && uniforms.u_blendMode) {
       uniforms.u_blendMode.value = this.getBlendModeValue();
     }
     
-    if (params.colorShift !== undefined) {
+    if (params.colorShift !== undefined && uniforms.u_colorShift) {
       uniforms.u_colorShift.value = params.colorShift;
     }
     
-    if (params.colorShiftRate !== undefined) {
+    if (params.colorShiftRate !== undefined && uniforms.u_colorShiftRate) {
       uniforms.u_colorShiftRate.value = params.colorShiftRate;
     }
     
-    if (params.feedbackTexture !== undefined) {
+    if (params.feedbackTexture !== undefined && uniforms.u_currentTexture) {
       uniforms.u_currentTexture.value = params.feedbackTexture;
     }
   }
@@ -378,7 +378,7 @@ export class FeedbackLoop extends BaseTechnique {
   public getUniformUpdaters(): Record<string, (time: number, deltaTime: number) => void> {
     return {
       u_time: (time: number) => {
-        if (this.feedbackMaterial) {
+        if (this.feedbackMaterial && this.feedbackMaterial.uniforms && this.feedbackMaterial.uniforms.u_time) {
           this.feedbackMaterial.uniforms.u_time.value = time / 1000.0;
         }
       }
@@ -394,12 +394,17 @@ export class FeedbackLoop extends BaseTechnique {
     // Store reference to WebGL renderer for buffer initialization
     this.webGLRenderer = renderer;
     
+    // Make sure uniforms exist
+    if (!this.feedbackMaterial.uniforms) return;
+    
     // Update feedback texture uniform to use the previous frame
     const prevIndex = this.currentTarget;
     const nextIndex = (this.currentTarget + 1) % 2;
     
-    // Use the previous render as input
-    this.feedbackMaterial.uniforms.u_feedbackTexture.value = this.feedbackPingPong[prevIndex].texture;
+    // Use the previous render as input if the uniform exists
+    if (this.feedbackMaterial.uniforms.u_feedbackTexture) {
+      this.feedbackMaterial.uniforms.u_feedbackTexture.value = this.feedbackPingPong[prevIndex].texture;
+    }
     
     // Render to the next target in the ping-pong pair
     this.mesh.material = this.feedbackMaterial;
@@ -456,6 +461,10 @@ export class FeedbackLoop extends BaseTechnique {
       this.feedbackPingPong[0].dispose();
       this.feedbackPingPong[1].dispose();
       this.feedbackPingPong = null;
+    }
+    
+    if (this.feedbackMaterial) {
+      this.feedbackMaterial = null;
     }
     
     this.currentTarget = 0;

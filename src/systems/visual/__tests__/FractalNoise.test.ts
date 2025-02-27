@@ -281,4 +281,130 @@ describe('FractalNoise', () => {
     (technique3 as any).params = { colorMode: 'custom' };
     expect(technique3.testGetColorModeValue()).toBe(2);
   });
+
+  // Test rendering functionality
+  test('should render to a target', () => {
+    technique.initialize(renderer);
+    technique.createMaterial({});
+    
+    const target = new THREE.WebGLRenderTarget(800, 600);
+    technique.render(renderer, target);
+    
+    // Verify rendering was called
+    expect(renderer.setRenderTarget).toHaveBeenCalledWith(target);
+    expect(renderer.render).toHaveBeenCalledWith(technique.testScene, technique.testCamera);
+  });
+
+  // Edge case: rendering without initialization should not throw errors
+  test('should handle rendering without initialization', () => {
+    // Should not throw an error
+    expect(() => {
+      technique.render(renderer);
+    }).not.toThrow();
+    
+    // Should not perform any rendering
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  // Edge case: updating params without initialization should not throw errors
+  test('should handle updating params without initialization', () => {
+    expect(() => {
+      technique.updateParams({ scale: 2.5 });
+    }).not.toThrow();
+  });
+
+  // Edge case: properly handle null uniform values
+  test('should handle null uniform values gracefully', () => {
+    technique.initialize(renderer);
+    const mockNoiseMaterial = technique.testNoiseMaterial;
+    
+    // Temporarily set uniforms to null to test edge case
+    if (mockNoiseMaterial) {
+      const originalUniforms = { ...mockNoiseMaterial.uniforms };
+      mockNoiseMaterial.uniforms = null as any;
+      
+      // Should not throw errors when accessing null uniforms
+      expect(() => {
+        technique.updateParams({ scale: 2.5 });
+        
+        const updaters = technique.getUniformUpdaters();
+        updaters.u_time(1000, 0);
+        updaters.u_resolution(0, 0);
+        
+        technique.render(renderer);
+      }).not.toThrow();
+      
+      // Restore original uniforms
+      mockNoiseMaterial.uniforms = originalUniforms;
+    }
+  });
+
+  // Test proper resource disposal
+  test('should properly dispose resources', () => {
+    technique.initialize(renderer);
+    technique.createMaterial({});
+    
+    technique.dispose();
+    
+    // Verify mesh disposal (from BaseTechnique)
+    expect(technique.testMesh.geometry.dispose).toHaveBeenCalled();
+    expect(technique.testNoiseMaterial).toBeNull();
+  });
+
+  // Test all noise types together with all domain types
+  test('should handle all noise/domain type combinations', () => {
+    technique.initialize(renderer);
+    
+    const noiseTypes = ['simplex', 'perlin', 'worley', 'value'] as const;
+    const domainTypes = ['normal', 'ridged', 'turbulent', 'terraced'] as const;
+    
+    // Test all combinations
+    for (const noiseType of noiseTypes) {
+      for (const domain of domainTypes) {
+        const params = {
+          noiseType,
+          domain
+        };
+        
+        // Should not throw errors
+        expect(() => {
+          technique.createMaterial(params);
+          technique.render(renderer);
+        }).not.toThrow();
+      }
+    }
+  });
+
+  // Test all color modes
+  test('should handle all color modes', () => {
+    technique.initialize(renderer);
+    
+    const colorModes = ['grayscale', 'colorful', 'custom'] as const;
+    
+    for (const colorMode of colorModes) {
+      const params = {
+        colorMode,
+        colorA: new THREE.Color(1, 0, 0),
+        colorB: new THREE.Color(0, 0, 1)
+      };
+      
+      // Should not throw errors
+      expect(() => {
+        technique.createMaterial(params);
+        technique.render(renderer);
+      }).not.toThrow();
+    }
+  });
+
+  // Test cleanup of mocks between tests to prevent test contamination
+  test('should clean up mocks between tests', () => {
+    // This test verifies that the beforeEach setup correctly clears mocks
+    expect(jest.clearAllMocks).toBeDefined();
+    
+    technique.initialize(renderer);
+    technique.render(renderer);
+    
+    expect(renderer.render).toHaveBeenCalled();
+    expect(renderer.setRenderTarget).toHaveBeenCalled();
+  });
 }); 

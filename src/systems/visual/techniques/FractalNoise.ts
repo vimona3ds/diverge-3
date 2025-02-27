@@ -395,7 +395,7 @@ export class FractalNoise extends BaseTechnique {
    * Update parameters
    */
   public updateParams(params: Partial<FractalNoiseParams>): void {
-    if (!this.noiseMaterial) return;
+    if (!this.noiseMaterial || !this.noiseMaterial.uniforms) return;
     
     // Update params object
     this.params = {
@@ -406,47 +406,47 @@ export class FractalNoise extends BaseTechnique {
     // Update shader uniforms
     const uniforms = this.noiseMaterial.uniforms;
     
-    if (params.scale !== undefined) {
+    if (params.scale !== undefined && uniforms.u_scale) {
       uniforms.u_scale.value = params.scale;
     }
     
-    if (params.octaves !== undefined) {
+    if (params.octaves !== undefined && uniforms.u_octaves) {
       uniforms.u_octaves.value = params.octaves;
     }
     
-    if (params.persistence !== undefined) {
+    if (params.persistence !== undefined && uniforms.u_persistence) {
       uniforms.u_persistence.value = params.persistence;
     }
     
-    if (params.lacunarity !== undefined) {
+    if (params.lacunarity !== undefined && uniforms.u_lacunarity) {
       uniforms.u_lacunarity.value = params.lacunarity;
     }
     
-    if (params.noiseType !== undefined) {
+    if (params.noiseType !== undefined && uniforms.u_noiseType) {
       uniforms.u_noiseType.value = this.getNoiseTypeValue();
     }
     
-    if (params.domain !== undefined) {
+    if (params.domain !== undefined && uniforms.u_domainType) {
       uniforms.u_domainType.value = this.getDomainTypeValue();
     }
     
-    if (params.colorMode !== undefined) {
+    if (params.colorMode !== undefined && uniforms.u_colorMode) {
       uniforms.u_colorMode.value = this.getColorModeValue();
     }
     
-    if (params.colorA !== undefined) {
+    if (params.colorA !== undefined && uniforms.u_colorA) {
       uniforms.u_colorA.value = params.colorA;
     }
     
-    if (params.colorB !== undefined) {
+    if (params.colorB !== undefined && uniforms.u_colorB) {
       uniforms.u_colorB.value = params.colorB;
     }
     
-    if (params.timeScale !== undefined) {
+    if (params.timeScale !== undefined && uniforms.u_timeScale) {
       uniforms.u_timeScale.value = params.timeScale;
     }
     
-    if (params.seed !== undefined) {
+    if (params.seed !== undefined && uniforms.u_seed) {
       uniforms.u_seed.value = params.seed;
     }
   }
@@ -457,13 +457,13 @@ export class FractalNoise extends BaseTechnique {
   public getUniformUpdaters(): Record<string, (time: number, deltaTime: number) => void> {
     return {
       u_time: (time: number) => {
-        if (this.noiseMaterial) {
+        if (this.noiseMaterial && this.noiseMaterial.uniforms && this.noiseMaterial.uniforms.u_time) {
           this.noiseMaterial.uniforms.u_time.value = time / 1000.0;
         }
       },
       
       u_resolution: (time: number) => {
-        if (this.noiseMaterial && this.webGLRenderer) {
+        if (this.noiseMaterial && this.noiseMaterial.uniforms && this.noiseMaterial.uniforms.u_resolution && this.webGLRenderer) {
           const size = new THREE.Vector2();
           this.webGLRenderer.getSize(size);
           this.noiseMaterial.uniforms.u_resolution.value = size;
@@ -482,7 +482,7 @@ export class FractalNoise extends BaseTechnique {
     this.webGLRenderer = renderer;
     
     // Get initial resolution
-    if (this.noiseMaterial) {
+    if (this.noiseMaterial && this.noiseMaterial.uniforms && this.noiseMaterial.uniforms.u_resolution) {
       const size = new THREE.Vector2();
       renderer.getSize(size);
       this.noiseMaterial.uniforms.u_resolution.value = size;
@@ -491,4 +491,32 @@ export class FractalNoise extends BaseTechnique {
   
   // Reference to the WebGL renderer
   private webGLRenderer: THREE.WebGLRenderer | null = null;
+
+  /**
+   * Render the fractal noise
+   */
+  public render(renderer: THREE.WebGLRenderer, target?: THREE.WebGLRenderTarget): void {
+    if (!this.initialized || !this.mesh || !this.noiseMaterial) return;
+
+    // Store reference to renderer for future use
+    this.webGLRenderer = renderer;
+    
+    // Render to the target
+    this.mesh.material = this.noiseMaterial;
+    renderer.setRenderTarget(target || null);
+    renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Clean up resources
+   */
+  public dispose(): void {
+    super.dispose();
+    
+    if (this.noiseMaterial) {
+      this.noiseMaterial = null;
+    }
+    
+    this.webGLRenderer = null;
+  }
 } 

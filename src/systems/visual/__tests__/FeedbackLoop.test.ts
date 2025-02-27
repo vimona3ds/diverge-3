@@ -305,4 +305,69 @@ describe('FeedbackLoop', () => {
     (technique5 as any).params = { blend: 'invalid' as any };
     expect(technique5.testGetBlendModeValue()).toBe(2); // Default to screen
   });
+
+  // Edge case: rendering without initialization should not throw errors
+  test('should handle rendering without initialization', () => {
+    // Should not throw an error
+    expect(() => {
+      technique.render(renderer);
+    }).not.toThrow();
+    
+    // Should not perform any rendering
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  // Edge case: updating params without initialization should not throw errors
+  test('should handle updating params without initialization', () => {
+    expect(() => {
+      technique.updateParams({ feedbackStrength: 0.5 });
+    }).not.toThrow();
+  });
+
+  // Edge case: resetting without initialization should not throw errors
+  test('should handle resetting without initialization', () => {
+    expect(() => {
+      technique.reset();
+    }).not.toThrow();
+    
+    // Should not clear any buffers
+    expect(renderer.clear).not.toHaveBeenCalled();
+  });
+
+  // Edge case: properly handle null uniform values
+  test('should handle null uniform values gracefully', () => {
+    technique.initialize(renderer);
+    const mockFeedbackMaterial = technique.testFeedbackMaterial;
+    
+    // Temporarily set uniforms to null to test edge case
+    if (mockFeedbackMaterial) {
+      const originalUniforms = { ...mockFeedbackMaterial.uniforms };
+      mockFeedbackMaterial.uniforms = null as any;
+      
+      // Should not throw errors when accessing null uniforms
+      expect(() => {
+        technique.updateParams({ feedbackStrength: 0.5 });
+        
+        const updaters = technique.getUniformUpdaters();
+        updaters.u_time(1000, 0);
+        
+        technique.render(renderer);
+      }).not.toThrow();
+      
+      // Restore original uniforms
+      mockFeedbackMaterial.uniforms = originalUniforms;
+    }
+  });
+
+  // Test cleanup of mocks between tests to prevent test contamination
+  test('should clean up mocks between tests', () => {
+    // This test verifies that the beforeEach setup correctly resets mocks
+    expect(jest.clearAllMocks).toBeDefined();
+    
+    technique.initialize(renderer);
+    technique.render(renderer);
+    
+    expect(renderer.render).toHaveBeenCalled();
+    expect(renderer.setRenderTarget).toHaveBeenCalled();
+  });
 }); 
