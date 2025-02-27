@@ -262,23 +262,113 @@ const DISPLAY_FRAG_SHADER = `
 `;
 
 /**
- * Parameters for the fluid simulation
+ * Enum for fluid simulation colorization modes
  */
-export interface FluidSimulationParams {
-  resolution: number;          // Grid resolution (power of 2 recommended)
-  dyeResolution: number;       // Dye texture resolution (visualization)
-  densityDissipation: number;  // How quickly the density dissipates
-  velocityDissipation: number; // How quickly the velocity dissipates
-  pressureIterations: number;  // Number of pressure solver iterations
-  curl: number;                // Curl force strength (vorticity)
-  splatRadius: number;         // Radius of fluid injection
-  colorA: THREE.Color;         // First color for visualization
-  colorB: THREE.Color;         // Second color for visualization
-  colorMode: 'rainbow' | 'custom' | 'monochrome'; // Visualization mode
+export enum ColorMode {
+  Rainbow = 'rainbow',
+  Custom = 'custom',
+  Monochrome = 'monochrome'
 }
 
 /**
- * Types of fluid simulation steps
+ * Type for positive number constraints (greater than 0)
+ */
+export type PositiveNumber = number;
+
+/**
+ * Type for resolution values (must be power of 2)
+ */
+export type PowerOfTwoResolution = 128 | 256 | 512 | 1024 | 2048;
+
+/**
+ * Type for 0-1 normalized values
+ */
+export type NormalizedValue = number;
+
+/**
+ * Range-constrained numerical types
+ */
+export type DissipationValue = number; // 0.0 to 1.0
+export type PressureIterations = number; // Positive integer, typically 10-50
+export type CurlStrength = number; // Positive number, typically 0-30
+
+/**
+ * Fluid simulation parameters with stricter, more specific types
+ */
+export interface FluidSimulationParams {
+  /**
+   * Grid resolution for the fluid simulation (power of 2 recommended)
+   * Controls the detail level of the fluid dynamics
+   * @minimum 128
+   * @maximum 2048
+   */
+  resolution: PowerOfTwoResolution;
+
+  /**
+   * Dye texture resolution for visualization (power of 2 recommended)
+   * Controls the detail level of the color visualization
+   * @minimum 128
+   * @maximum 2048
+   */
+  dyeResolution: PowerOfTwoResolution;
+
+  /**
+   * How quickly the dye color dissipates (0.0 to 1.0)
+   * Lower values make the color fade quickly, higher values make it persist
+   * @minimum 0.0
+   * @maximum 1.0
+   */
+  densityDissipation: DissipationValue;
+
+  /**
+   * How quickly the velocity dissipates (0.0 to 1.0)
+   * Lower values make the fluid slow down quickly, higher values maintain momentum
+   * @minimum 0.0
+   * @maximum 1.0
+   */
+  velocityDissipation: DissipationValue;
+
+  /**
+   * Number of iterations for the pressure solver
+   * Higher values give more accurate fluid behavior but cost performance
+   * @minimum 1
+   * @maximum 50
+   */
+  pressureIterations: PressureIterations;
+
+  /**
+   * Curl force strength (vorticity confinement)
+   * Controls how much small-scale vortices are preserved and enhanced
+   * @minimum 0
+   * @maximum 50
+   */
+  curl: CurlStrength;
+
+  /**
+   * Radius of fluid injection when adding forces or dye
+   * @minimum 0.01
+   * @maximum 1.0
+   */
+  splatRadius: NormalizedValue;
+
+  /**
+   * First color for visualization
+   */
+  colorA: THREE.Color;
+
+  /**
+   * Second color for visualization
+   */
+  colorB: THREE.Color;
+
+  /**
+   * Visualization color mode
+   */
+  colorMode: ColorMode;
+}
+
+/**
+ * Enum for simulation steps
  */
 enum SimStep {
   Advection,
@@ -292,16 +382,18 @@ enum SimStep {
 }
 
 /**
- * Custom uniform interface that includes an update function
+ * Interface for shader uniforms with update function
  */
 interface IUniformWithUpdate extends THREE.IUniform {
-  update?: (time: number, deltaTime?: number) => any;
+  update?: (time: number, deltaTime?: number) => void;
   type: string;
 }
 
 /**
- * Helper function to convert THREE.ShaderMaterial to IShaderMaterial
- * by adding the required 'type' property to uniforms
+ * Helper function to create a shader material with typed uniforms
+ * @param material The THREE.ShaderMaterial to convert
+ * @param uniformTypes Record of uniform types
+ * @returns Typed shader material
  */
 const createShaderMaterial = (
   material: THREE.ShaderMaterial, 
@@ -328,10 +420,59 @@ const createShaderMaterial = (
 };
 
 /**
- * Implementation of 2D fluid simulation based on Navier-Stokes equations
- * Uses a grid-based approach with velocity and pressure fields
+ * Creates a type-safe set of default parameters for fluid simulation
+ * @returns Default fluid simulation parameters
+ */
+export function createDefaultFluidParams(): FluidSimulationParams {
+  return {
+    resolution: 256,
+    dyeResolution: 1024,
+    densityDissipation: 0.98,
+    velocityDissipation: 0.99,
+    pressureIterations: 20,
+    curl: 20,
+    splatRadius: 0.3,
+    colorA: new THREE.Color(0x000000),
+    colorB: new THREE.Color(0xffffff),
+    colorMode: ColorMode.Rainbow
+  };
+}
+
+/**
+ * Type guard to check if a value is a valid PowerOfTwoResolution
+ * @param value The value to check
+ * @returns True if the value is a valid power of two resolution
+ */
+function isPowerOfTwoResolution(value: number): value is PowerOfTwoResolution {
+  return value === 128 || value === 256 || value === 512 || value === 1024 || value === 2048;
+}
+
+/**
+ * Type guard to check if a value is a valid ColorMode
+ * @param value The value to check
+ * @returns True if the value is a valid color mode
+ */
+function isValidColorMode(value: string): value is ColorMode {
+  return Object.values(ColorMode).includes(value as ColorMode);
+}
+
+/**
+ * Clamps a dissipation value to the valid range (0-1)
+ * @param value The value to clamp
+ * @returns Clamped value between 0 and 1
+ */
+function clampDissipation(value: number): DissipationValue {
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Implementation of fluid simulation based on Navier-Stokes equations
+ * Provides a realistic fluid dynamics simulation with customizable parameters
  */
 export class FluidSimulation extends BaseTechnique {
+  /**
+   * Current simulation parameters
+   */
   private params: FluidSimulationParams;
   private simInitialized: boolean = false;
   
@@ -365,22 +506,15 @@ export class FluidSimulation extends BaseTechnique {
   private pointerForces: { [id: number]: THREE.Vector2 } = {};
   private lastUpdateTime: number = 0;
   
+  /**
+   * Creates a new FluidSimulation instance
+   * @param id Unique identifier for this technique
+   */
   constructor(id: string) {
     super(id, 'Fluid Simulation');
     
-    // Default parameters
-    this.params = {
-      resolution: 128,
-      dyeResolution: 512,
-      densityDissipation: 0.98,
-      velocityDissipation: 0.98,
-      pressureIterations: 20,
-      curl: 30,
-      splatRadius: 0.25,
-      colorA: new THREE.Color(0x00ffff),
-      colorB: new THREE.Color(0xff0000),
-      colorMode: 'rainbow'
-    };
+    // Initialize with default parameters
+    this.params = createDefaultFluidParams();
   }
   
   /**
@@ -699,72 +833,122 @@ export class FluidSimulation extends BaseTechnique {
   }
   
   /**
-   * Create a shader material for the fluid simulation
+   * Creates a shader material for the fluid simulation
    * @param params Parameters for the simulation
+   * @returns Shader material with appropriate uniforms and shaders
    */
-  public createMaterial(params: FluidSimulationParams): IShaderMaterial {
-    this.params = { ...params };
+  public createMaterial(params: Partial<FluidSimulationParams>): IShaderMaterial {
+    // Merge with default parameters for any missing values
+    const defaultParams = createDefaultFluidParams();
+    const mergedParams: FluidSimulationParams = {
+      ...defaultParams,
+      ...params
+    };
     
+    // Validate and sanitize parameters
+    if (!isPowerOfTwoResolution(mergedParams.resolution)) {
+      console.warn(`Invalid resolution: ${mergedParams.resolution}. Using default: 256`);
+      mergedParams.resolution = 256;
+    }
+    
+    if (!isPowerOfTwoResolution(mergedParams.dyeResolution)) {
+      console.warn(`Invalid dyeResolution: ${mergedParams.dyeResolution}. Using default: 1024`);
+      mergedParams.dyeResolution = 1024;
+    }
+    
+    mergedParams.densityDissipation = clampDissipation(mergedParams.densityDissipation);
+    mergedParams.velocityDissipation = clampDissipation(mergedParams.velocityDissipation);
+    
+    mergedParams.pressureIterations = Math.max(1, Math.min(50, Math.floor(mergedParams.pressureIterations)));
+    mergedParams.curl = Math.max(0, Math.min(50, mergedParams.curl));
+    mergedParams.splatRadius = Math.max(0.01, Math.min(1, mergedParams.splatRadius));
+    
+    if (typeof mergedParams.colorMode === 'string' && !isValidColorMode(mergedParams.colorMode)) {
+      console.warn(`Invalid colorMode: ${mergedParams.colorMode}. Using default: rainbow`);
+      mergedParams.colorMode = ColorMode.Rainbow;
+    }
+    
+    // Store validated parameters
+    this.params = mergedParams;
+
     // Already created in initialize(), just update params
-    this.updateParams(params);
+    this.updateParams(mergedParams);
     
     // Return the display material which will be used for visualization
     return this.displayMaterial as IShaderMaterial;
   }
   
   /**
-   * Update simulation parameters
-   * @param params New parameters
+   * Updates simulation parameters
+   * @param params New parameters to apply
    */
-  public updateParams(params: FluidSimulationParams): void {
-    // If resolution changed, we need to recreate render targets
-    const resolutionChanged = 
-      this.params.resolution !== params.resolution ||
-      this.params.dyeResolution !== params.dyeResolution;
+  public updateParams(params: Partial<FluidSimulationParams>): void {
+    // Merge with existing parameters
+    this.params = {
+      ...this.params,
+      ...params
+    };
     
-    this.params = { ...params };
+    // Validate and sanitize parameters
+    if (!isPowerOfTwoResolution(this.params.resolution)) {
+      console.warn(`Invalid resolution: ${this.params.resolution}. Using default: 256`);
+      this.params.resolution = 256;
+    }
     
-    if (resolutionChanged && this.simInitialized) {
-      // TODO: Dispose and recreate render targets with new resolution
+    if (!isPowerOfTwoResolution(this.params.dyeResolution)) {
+      console.warn(`Invalid dyeResolution: ${this.params.dyeResolution}. Using default: 1024`);
+      this.params.dyeResolution = 1024;
+    }
+    
+    this.params.densityDissipation = clampDissipation(this.params.densityDissipation);
+    this.params.velocityDissipation = clampDissipation(this.params.velocityDissipation);
+    
+    this.params.pressureIterations = Math.max(1, Math.min(50, Math.floor(this.params.pressureIterations)));
+    this.params.curl = Math.max(0, Math.min(50, this.params.curl));
+    this.params.splatRadius = Math.max(0.01, Math.min(1, this.params.splatRadius));
+    
+    if (typeof this.params.colorMode === 'string' && !isValidColorMode(this.params.colorMode)) {
+      console.warn(`Invalid colorMode: ${this.params.colorMode}. Using default: rainbow`);
+      this.params.colorMode = ColorMode.Rainbow;
     }
     
     // Update material uniforms
     if (this.vorticityMaterial && this.vorticityMaterial.uniforms && 
         this.vorticityMaterial.uniforms.u_curl_strength) {
-      this.vorticityMaterial.uniforms.u_curl_strength.value = params.curl;
+      this.vorticityMaterial.uniforms.u_curl_strength.value = this.params.curl;
     }
     
     if (this.displayMaterial && this.displayMaterial.uniforms) {
       if (this.displayMaterial.uniforms.u_colorMode) {
         this.displayMaterial.uniforms.u_colorMode.value = 
-          params.colorMode === 'rainbow' ? 0 : 
-          params.colorMode === 'custom' ? 1 : 2;
+          this.params.colorMode === 'rainbow' ? 0 : 
+          this.params.colorMode === 'custom' ? 1 : 2;
       }
       
       if (this.displayMaterial.uniforms.u_colorA) {
-        this.displayMaterial.uniforms.u_colorA.value = params.colorA;
+        this.displayMaterial.uniforms.u_colorA.value = this.params.colorA;
       }
       
       if (this.displayMaterial.uniforms.u_colorB) {
-        this.displayMaterial.uniforms.u_colorB.value = params.colorB;
+        this.displayMaterial.uniforms.u_colorB.value = this.params.colorB;
       }
     }
     
     if (this.advectionMaterial && this.advectionMaterial.uniforms) {
       if (this.advectionMaterial.uniforms.u_dissipation) {
-        this.advectionMaterial.uniforms.u_dissipation.value = params.velocityDissipation;
+        this.advectionMaterial.uniforms.u_dissipation.value = this.params.velocityDissipation;
       }
     }
     
     if (this.addDyeMaterial && this.addDyeMaterial.uniforms) {
       if (this.addDyeMaterial.uniforms.u_dissipation) {
-        this.addDyeMaterial.uniforms.u_dissipation.value = params.densityDissipation;
+        this.addDyeMaterial.uniforms.u_dissipation.value = this.params.densityDissipation;
       }
     }
     
     // Update texel size uniforms where needed
-    const simTexelSize = new THREE.Vector2(1.0 / params.resolution, 1.0 / params.resolution);
-    const dyeTexelSize = new THREE.Vector2(1.0 / params.dyeResolution, 1.0 / params.dyeResolution);
+    const simTexelSize = new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution);
+    const dyeTexelSize = new THREE.Vector2(1.0 / this.params.dyeResolution, 1.0 / this.params.dyeResolution);
     
     if (this.advectionMaterial) {
       this.advectionMaterial.uniforms.u_texelSize.value = simTexelSize;
@@ -827,7 +1011,7 @@ export class FluidSimulation extends BaseTechnique {
    * @param deltaTime Time since last update in milliseconds
    */
   private simulateStep(renderer: THREE.WebGLRenderer, deltaTime: number): void {
-    if (!this.initialized || !this.velocityDoubleFBO) return;
+    if (!this.simInitialized || !this.velocityDoubleFBO) return;
     
     const dt = Math.min(deltaTime / 1000.0, 0.016);
     

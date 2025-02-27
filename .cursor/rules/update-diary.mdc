@@ -7,7 +7,7 @@ alwaysApply: false
 1. Reflect on the overall progress for the feature, your current progress on your plan, and what remains as next steps for the feature and your plan.
 2. Reflect on anything you would like to keep in mind next time, such as linter errors, TODOs, or mistakes and inefficiencies.
 3. Greet the user with "Hello again, Friend!"
-4. Update the attached document with all of these details. Be specific and thorough.
+4. Update the attached document with all of these details. No need to be specific about exactly which changes you made -- a summary is fine. However, be specific and thorough about next steps. 
 5. Commit all of the changes in the directory by running "git add ." followed by your commit, including a message summarizing all of the changes.
 6. Respond with "Diary updated. Awaiting further instructions."
 
