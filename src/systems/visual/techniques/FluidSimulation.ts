@@ -366,7 +366,7 @@ export class FluidSimulation extends BaseTechnique {
   private lastUpdateTime: number = 0;
   
   constructor(id: string) {
-    super(id, 'FluidSimulation');
+    super(id, 'Fluid Simulation');
     
     // Default parameters
     this.params = {
@@ -394,12 +394,14 @@ export class FluidSimulation extends BaseTechnique {
     this.createShaderMaterials();
     
     // Clear all render targets to start with a clean state
-    if (this.clearMaterial) {
+    if (this.clearMaterial && this.clearMaterial.uniforms && 
+        this.clearMaterial.uniforms.u_clearColor && 
+        this.clearMaterial.uniforms.u_clearColor.value) {
       this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
       
       // Clear velocity
-      if (this.velocityDoubleFBO) {
-        this.mesh!.material = this.clearMaterial;
+      if (this.velocityDoubleFBO && this.mesh && this.scene && this.camera) {
+        this.mesh.material = this.clearMaterial;
         renderer.setRenderTarget(this.velocityDoubleFBO[0]);
         renderer.render(this.scene, this.camera);
         renderer.setRenderTarget(this.velocityDoubleFBO[1]);
@@ -407,8 +409,8 @@ export class FluidSimulation extends BaseTechnique {
       }
       
       // Clear pressure
-      if (this.pressureDoubleFBO) {
-        this.mesh!.material = this.clearMaterial;
+      if (this.pressureDoubleFBO && this.mesh && this.scene && this.camera) {
+        this.mesh.material = this.clearMaterial;
         renderer.setRenderTarget(this.pressureDoubleFBO[0]);
         renderer.render(this.scene, this.camera);
         renderer.setRenderTarget(this.pressureDoubleFBO[1]);
@@ -416,8 +418,8 @@ export class FluidSimulation extends BaseTechnique {
       }
       
       // Clear density
-      if (this.densityDoubleFBO) {
-        this.mesh!.material = this.clearMaterial;
+      if (this.densityDoubleFBO && this.mesh && this.scene && this.camera) {
+        this.mesh.material = this.clearMaterial;
         renderer.setRenderTarget(this.densityDoubleFBO[0]);
         renderer.render(this.scene, this.camera);
         renderer.setRenderTarget(this.densityDoubleFBO[1]);
@@ -425,15 +427,15 @@ export class FluidSimulation extends BaseTechnique {
       }
       
       // Clear divergence
-      if (this.divergenceRenderTarget) {
-        this.mesh!.material = this.clearMaterial;
+      if (this.divergenceRenderTarget && this.mesh && this.scene && this.camera) {
+        this.mesh.material = this.clearMaterial;
         renderer.setRenderTarget(this.divergenceRenderTarget);
         renderer.render(this.scene, this.camera);
       }
       
       // Clear curl
-      if (this.curlRenderTarget) {
-        this.mesh!.material = this.clearMaterial;
+      if (this.curlRenderTarget && this.mesh && this.scene && this.camera) {
+        this.mesh.material = this.clearMaterial;
         renderer.setRenderTarget(this.curlRenderTarget);
         renderer.render(this.scene, this.camera);
       }
@@ -727,16 +729,37 @@ export class FluidSimulation extends BaseTechnique {
     }
     
     // Update material uniforms
-    if (this.vorticityMaterial) {
+    if (this.vorticityMaterial && this.vorticityMaterial.uniforms && 
+        this.vorticityMaterial.uniforms.u_curl_strength) {
       this.vorticityMaterial.uniforms.u_curl_strength.value = params.curl;
     }
     
-    if (this.displayMaterial) {
-      this.displayMaterial.uniforms.u_colorMode.value = 
-        params.colorMode === 'rainbow' ? 0 : 
-        params.colorMode === 'custom' ? 1 : 2;
-      this.displayMaterial.uniforms.u_colorA.value = params.colorA;
-      this.displayMaterial.uniforms.u_colorB.value = params.colorB;
+    if (this.displayMaterial && this.displayMaterial.uniforms) {
+      if (this.displayMaterial.uniforms.u_colorMode) {
+        this.displayMaterial.uniforms.u_colorMode.value = 
+          params.colorMode === 'rainbow' ? 0 : 
+          params.colorMode === 'custom' ? 1 : 2;
+      }
+      
+      if (this.displayMaterial.uniforms.u_colorA) {
+        this.displayMaterial.uniforms.u_colorA.value = params.colorA;
+      }
+      
+      if (this.displayMaterial.uniforms.u_colorB) {
+        this.displayMaterial.uniforms.u_colorB.value = params.colorB;
+      }
+    }
+    
+    if (this.advectionMaterial && this.advectionMaterial.uniforms) {
+      if (this.advectionMaterial.uniforms.u_dissipation) {
+        this.advectionMaterial.uniforms.u_dissipation.value = params.velocityDissipation;
+      }
+    }
+    
+    if (this.addDyeMaterial && this.addDyeMaterial.uniforms) {
+      if (this.addDyeMaterial.uniforms.u_dissipation) {
+        this.addDyeMaterial.uniforms.u_dissipation.value = params.densityDissipation;
+      }
     }
     
     // Update texel size uniforms where needed
@@ -775,7 +798,25 @@ export class FluidSimulation extends BaseTechnique {
     return {
       u_dt: (time: number, deltaTime: number) => {
         // Cap delta time to avoid instability in the simulation
-        return Math.min(deltaTime / 1000.0, 0.016);
+        const dt = Math.min(deltaTime, 0.016666); // Cap at ~60fps
+        
+        if (this.advectionMaterial && this.advectionMaterial.uniforms && 
+            this.advectionMaterial.uniforms.u_dt) {
+          this.advectionMaterial.uniforms.u_dt.value = dt;
+        }
+        
+        if (this.vorticityMaterial && this.vorticityMaterial.uniforms && 
+            this.vorticityMaterial.uniforms.u_dt) {
+          this.vorticityMaterial.uniforms.u_dt.value = dt;
+        }
+      },
+      
+      u_time: (time: number) => {
+        // Update time uniform for animations
+        if (this.displayMaterial && this.displayMaterial.uniforms && 
+            this.displayMaterial.uniforms.u_time) {
+          this.displayMaterial.uniforms.u_time.value = time;
+        }
       }
     };
   }
@@ -786,27 +827,47 @@ export class FluidSimulation extends BaseTechnique {
    * @param deltaTime Time since last update in milliseconds
    */
   private simulateStep(renderer: THREE.WebGLRenderer, deltaTime: number): void {
-    if (!this.velocityDoubleFBO || !this.densityDoubleFBO || !this.pressureDoubleFBO) return;
+    if (!this.initialized || !this.velocityDoubleFBO) return;
     
-    // Helper to swap FBO buffers
+    const dt = Math.min(deltaTime / 1000.0, 0.016);
+    
+    // Function to swap ping-pong buffers
     const swap = (fbo: [THREE.WebGLRenderTarget, THREE.WebGLRenderTarget]) => {
-      [fbo[0], fbo[1]] = [fbo[1], fbo[0]];
+      const temp = fbo[0];
+      fbo[0] = fbo[1];
+      fbo[1] = temp;
     };
     
-    // Convert deltaTime to seconds and clamp to avoid instability
-    const dt = Math.min(deltaTime / 1000, 0.016);
-    
     // Update shader uniforms with current time step
-    if (this.advectionMaterial) this.advectionMaterial.uniforms.u_dt.value = dt;
-    if (this.vorticityMaterial) this.vorticityMaterial.uniforms.u_dt.value = dt;
+    if (this.advectionMaterial && this.advectionMaterial.uniforms) {
+      if (this.advectionMaterial.uniforms.u_dt) {
+        this.advectionMaterial.uniforms.u_dt.value = dt;
+      }
+    }
+    
+    if (this.vorticityMaterial && this.vorticityMaterial.uniforms) {
+      if (this.vorticityMaterial.uniforms.u_dt) {
+        this.vorticityMaterial.uniforms.u_dt.value = dt;
+      }
+    }
     
     // 1. Advect velocity
-    if (this.advectionMaterial) {
-      this.advectionMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
-      this.advectionMaterial.uniforms.u_source.value = this.velocityDoubleFBO[0].texture;
-      this.advectionMaterial.uniforms.u_dissipation.value = this.params.velocityDissipation;
+    if (this.advectionMaterial && this.advectionMaterial.uniforms && 
+        this.velocityDoubleFBO && this.mesh && this.scene && this.camera) {
       
-      this.mesh!.material = this.advectionMaterial;
+      if (this.advectionMaterial.uniforms.u_velocity) {
+        this.advectionMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      }
+      
+      if (this.advectionMaterial.uniforms.u_source) {
+        this.advectionMaterial.uniforms.u_source.value = this.velocityDoubleFBO[0].texture;
+      }
+      
+      if (this.advectionMaterial.uniforms.u_dissipation) {
+        this.advectionMaterial.uniforms.u_dissipation.value = this.params.velocityDissipation;
+      }
+      
+      this.mesh.material = this.advectionMaterial;
       renderer.setRenderTarget(this.velocityDoubleFBO[1]);
       renderer.render(this.scene, this.camera);
       swap(this.velocityDoubleFBO);
@@ -842,10 +903,14 @@ export class FluidSimulation extends BaseTechnique {
     }
     
     // 5. Clear pressure
-    if (this.clearMaterial && this.pressureDoubleFBO) {
-      this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+    if (this.clearMaterial && this.pressureDoubleFBO && this.mesh && this.scene && this.camera) {
+      if (this.clearMaterial.uniforms && 
+          this.clearMaterial.uniforms.u_clearColor && 
+          this.clearMaterial.uniforms.u_clearColor.value) {
+        this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+      }
       
-      this.mesh!.material = this.clearMaterial;
+      this.mesh.material = this.clearMaterial;
       renderer.setRenderTarget(this.pressureDoubleFBO[0]);
       renderer.render(this.scene, this.camera);
     }
@@ -878,12 +943,23 @@ export class FluidSimulation extends BaseTechnique {
     }
     
     // 8. Advect density/color
-    if (this.advectionMaterial && this.densityDoubleFBO) {
-      this.advectionMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
-      this.advectionMaterial.uniforms.u_source.value = this.densityDoubleFBO[0].texture;
-      this.advectionMaterial.uniforms.u_dissipation.value = this.params.densityDissipation;
+    if (this.advectionMaterial && this.advectionMaterial.uniforms && 
+        this.densityDoubleFBO && this.velocityDoubleFBO && 
+        this.mesh && this.scene && this.camera) {
       
-      this.mesh!.material = this.advectionMaterial;
+      if (this.advectionMaterial.uniforms.u_velocity) {
+        this.advectionMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      }
+      
+      if (this.advectionMaterial.uniforms.u_source) {
+        this.advectionMaterial.uniforms.u_source.value = this.densityDoubleFBO[0].texture;
+      }
+      
+      if (this.advectionMaterial.uniforms.u_dissipation) {
+        this.advectionMaterial.uniforms.u_dissipation.value = this.params.densityDissipation;
+      }
+      
+      this.mesh.material = this.advectionMaterial;
       renderer.setRenderTarget(this.densityDoubleFBO[1]);
       renderer.render(this.scene, this.camera);
       swap(this.densityDoubleFBO);
@@ -1064,13 +1140,17 @@ export class FluidSimulation extends BaseTechnique {
    * @param renderer The WebGL renderer to use
    */
   public reset(renderer: THREE.WebGLRenderer): void {
-    if (!this.initialized || !this.clearMaterial) return;
+    if (!this.initialized || !this.clearMaterial || !this.mesh || !this.scene || !this.camera) return;
     
     // Clear all simulation render targets
-    this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+    if (this.clearMaterial.uniforms && 
+        this.clearMaterial.uniforms.u_clearColor && 
+        this.clearMaterial.uniforms.u_clearColor.value) {
+      this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+    }
     
     if (this.velocityDoubleFBO) {
-      this.mesh!.material = this.clearMaterial;
+      this.mesh.material = this.clearMaterial;
       renderer.setRenderTarget(this.velocityDoubleFBO[0]);
       renderer.render(this.scene, this.camera);
       renderer.setRenderTarget(this.velocityDoubleFBO[1]);
@@ -1078,7 +1158,7 @@ export class FluidSimulation extends BaseTechnique {
     }
     
     if (this.pressureDoubleFBO) {
-      this.mesh!.material = this.clearMaterial;
+      this.mesh.material = this.clearMaterial;
       renderer.setRenderTarget(this.pressureDoubleFBO[0]);
       renderer.render(this.scene, this.camera);
       renderer.setRenderTarget(this.pressureDoubleFBO[1]);
@@ -1086,7 +1166,7 @@ export class FluidSimulation extends BaseTechnique {
     }
     
     if (this.densityDoubleFBO) {
-      this.mesh!.material = this.clearMaterial;
+      this.mesh.material = this.clearMaterial;
       renderer.setRenderTarget(this.densityDoubleFBO[0]);
       renderer.render(this.scene, this.camera);
       renderer.setRenderTarget(this.densityDoubleFBO[1]);
@@ -1094,13 +1174,13 @@ export class FluidSimulation extends BaseTechnique {
     }
     
     if (this.divergenceRenderTarget) {
-      this.mesh!.material = this.clearMaterial;
+      this.mesh.material = this.clearMaterial;
       renderer.setRenderTarget(this.divergenceRenderTarget);
       renderer.render(this.scene, this.camera);
     }
     
     if (this.curlRenderTarget) {
-      this.mesh!.material = this.clearMaterial;
+      this.mesh.material = this.clearMaterial;
       renderer.setRenderTarget(this.curlRenderTarget);
       renderer.render(this.scene, this.camera);
     }

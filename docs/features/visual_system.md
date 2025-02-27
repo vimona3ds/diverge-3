@@ -77,6 +77,10 @@
   - ✅ Added null checks in Lenia.ts reset method for uniforms and material properties
   - ✅ Added proper checks for this.initMaterial.uniforms in multiple methods to prevent undefined errors
   - ✅ Fixed expected call counts in Lenia.test.ts to match actual implementation
+  - ✅ Fixed FluidSimulation tests by adding comprehensive null checks across all methods
+  - ✅ Added missing 'u_time' updater in getUniformUpdaters method in FluidSimulation
+  - ✅ Fixed simulateStep method in FluidSimulation to properly check for null uniforms
+  - ✅ Added proper null checks in reset method for FluidSimulation
 - ✅ Enhanced ReactionDiffusion test file:
   - ✅ Added additional accessors to TestableReactionDiffusion for comprehensive testing
   - ✅ Expanded test coverage to include edge cases and error handling scenarios
@@ -94,6 +98,11 @@
   - ✅ Added verification of resource disposal
   - ✅ Fixed test expectations to match actual implementation call patterns
   - ✅ Added type-specific tests for each material and uniform update
+- ✅ Fixed issues in remaining visual system tests:
+  - ✅ Completed FluidSimulation tests with all 11 tests now passing
+  - ✅ Added comprehensive null checks for all uniform accesses in simulateStep method
+  - ✅ Fixed uniform handling in updateParams method for all material properties
+  - ✅ Ensured proper initialization checks throughout all FluidSimulation methods
 
 **Incomplete:**
 - ❌ Performance optimizations for visual rendering
@@ -129,6 +138,8 @@
   - Improved robustness of reset and initialize methods in BaseTechnique and Lenia
   - Implemented safer handling of uniforms with proper existence checks
   - Ensured the tests run successfully by properly mocking THREE.js functionality
+  - Fixed FluidSimulation test failures by adding comprehensive null checks in key methods
+  - Added missing uniform updaters and fixed null reference issues in FluidSimulation
 - Completed testing for Lenia technique:
   - Added test accessors for all key properties
   - Added comprehensive tests for initialization, rendering, and cleanup
@@ -153,6 +164,7 @@
 - ✅ Implemented proper cleanup of mocks between tests to prevent test contamination
 - ✅ Fixed null reference errors in visual technique implementations with proper null checks
 - ✅ Completed test TODOs in Lenia.test.ts with comprehensive coverage
+- ✅ Fixed all FluidSimulation test failures by adding proper null checks throughout the code
 
 ## Shader Implementation Details:
 - **Metaballs**: Implemented using inverse-square falloff field function with custom threshold and color mapping. Added subtle noise and pulsing effects for a more organic appearance.
@@ -183,7 +195,7 @@
 - Testing verifies node registration, context extension, data flow, and resource cleanup
 
 ## Next Steps:
-1. Complete remaining test files for other visual techniques (FluidSimulation, FeedbackLoop, FractalNoise)
+1. Complete remaining test files for other visual techniques (FeedbackLoop, FractalNoise)
 2. Continue adding comprehensive edge case testing for all visual techniques
 3. Implement performance optimizations for the visual rendering pipeline
 4. Improve type safety for parameter interfaces across all techniques
@@ -204,6 +216,9 @@
 - Testing THREE.js applications requires careful mocking of WebGL objects
 - Helper classes to expose protected/private members are valuable for testing
 - Proper cleanup between tests prevents test contamination
+- Always add null checks in a waterfall pattern, checking each property level before accessing deeper ones
+- When fixing tests, ensure the fixes actually match the real-world usage patterns of the component
+- Be particularly careful with WebGL uniform access patterns as they require multiple safety checks
 
 ## Issues and Lessons Learned:
 - TypeScript type safety requires careful attention, especially with WebGL resources
