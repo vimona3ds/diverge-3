@@ -26,9 +26,9 @@
   - ✅ FeedbackLoop tests
   - ✅ FractalNoise tests
 - ✅ Fixed linter errors:
-  - ✅ Fixed Metaballs.test.ts references to 'color1'/'color2' properties (replaced with 'customColorA'/'customColorB')
+  - ✅ Fixed Metaballs test by properly using 'customColorA'/'customColorB' instead of 'color1'/'color2'
   - ✅ Added missing 'colorMapping' property in Metaballs.test.ts test parameters
-  - ✅ Fixed duplicate 'u_curl' property in FluidSimulation.test.ts mock uniforms (renamed second to 'u_curlStrength')
+  - ✅ Fixed FluidSimulation test by removing duplicate 'u_curl' property (renamed to 'u_curlStrength')
   - ✅ Fixed type issues in FluidSimulation with createShaderMaterial helper
   - ✅ Fixed IUniformWithUpdate interface to ensure 'type' property is never undefined
 - ✅ Shader implementations for all visual techniques:
@@ -54,9 +54,15 @@
   - ✅ FeedbackLoopNode implementation
   - ✅ FractalNoiseNode implementation
   - ✅ index.ts file to export all visual nodes
+- ✅ Integration with node system:
+  - ✅ Created VisualNodeIntegration class to bridge node system and visual system
+  - ✅ Implemented texture data flow between nodes
+  - ✅ Added topological sorting for correct processing order
+  - ✅ Implemented proper WebGL resource management and cleanup
+  - ✅ Added comprehensive tests for node integration
+  - ✅ Created index files for proper organization and exports
 
 **Incomplete:**
-- ❌ Integration with node system
 - ❌ Performance optimizations for visual rendering
 - ❌ Complete TODOs in some test files to improve coverage
 - ❌ More specific type safety for some parameter interfaces
@@ -107,81 +113,50 @@
 - **FractalNoise**: Implemented Fractal Brownian Motion (FBM) with multiple noise types (simplex, perlin, worley, value) and domain transformations (ridged, turbulent, terraced). Includes customizable color modes with grayscale, rainbow, and custom gradient options.
 
 ## Current Progress on Node Integration:
-- Created test file for visual nodes to verify registration and functionality
-- Implemented all node definitions:
-  - Metaballs visual technique (configured as a source node)
-  - Reaction-Diffusion technique (configured as a process node)
-  - Lenia cellular automata technique (fixed type errors in implementation)
-  - FluidSimulation technique (configured as a source node)
-  - FeedbackLoop technique (configured as a process node with input tracking)
-  - FractalNoise technique (configured as a source node with parameters matching the FractalNoise technique)
-- Each node definition includes:
-  - Proper input/output ports for texture connections
-  - Parameters matching the corresponding technique
-  - Initialization method to set up the technique
-  - Process method that updates the technique with node parameters
-  - Resource management with proper WebGL disposal
+- ✅ Created VisualNodeIntegration class that bridges the node system and visual system
+- ✅ Implemented texture data flow between nodes via input/output methods
+- ✅ Added topological sorting algorithm for correct node processing order
+- ✅ Implemented proper resource management with type-safe dispose method
+- ✅ Created comprehensive tests for integration functionality
+- ✅ Added proper type safety with TechniqueWithDispose interface and type guards
+- ✅ Created index files for organization and exports:
+  - ✅ src/systems/integration/index.ts - Exports integration components
+  - ✅ src/core/nodes/definitions/index.ts - Exports node definitions 
+  - ✅ src/core/nodes/index.ts - Exports node system components
+- ✅ All visual nodes are now properly registered with the NodeRegistry
 
-## Recent Progress:
-- ✅ Implemented the FractalNoiseNode to complete the set of visual nodes
-- ✅ Added the proper parameters to match the FractalNoise technique
-- ✅ Created comprehensive test cases for FractalNoiseNode
-- ✅ Added the FractalNoiseNode to the visual node index file for proper registration
-- ✅ Completed all visual node definitions, making them ready for integration with the node system
-
-## Issues and Lessons Learned:
-- Need to carefully match parameter names and types between node definitions and technique classes
-- Visual nodes require special handling for WebGL resources and proper disposal
-- The ProcessContext interface needed extension to add input/output methods
-- Type assertions are needed for proper TypeScript compatibility
-- Need to handle seed textures and custom initialization patterns properly
-- Technique parameter interfaces must be followed exactly to avoid type errors
-- When fixing type errors in node definitions, check both the interface type and actual usage in the technique
-- Use specific union types rather than generic strings for parameters with limited valid values
-- Parameter names in node definitions must precisely match the expected names in technique parameters
-- Adding missing parameters requires understanding both the parameter's purpose and appropriate default values
-- Type checking helps reveal inconsistencies between node definitions and technique implementations
-- Properties like 'required' that don't exist in IInputPort interface can cause linter errors
-- FeedbackLoop needs special handling to track input connection state and reset when reconnected
-- When testing technique nodes, be careful with circular dependencies (especially when importing the node and the technique in tests)
-- Using `(technique as any).getOutputTexture()` is a workaround - the BaseTechnique class should ideally have this method explicitly defined
-- Test failures can happen on type checking for instances when using mocked objects - inspect the actual values to create appropriate assertions
-- When working with mocks, sometimes it's better to check individual properties rather than use toHaveBeenCalledWith for the entire object
+## Integration Features Implemented:
+- Visual techniques can now be connected through the node graph
+- Texture data flows between nodes via connections
+- Nodes are processed in the correct order based on their dependencies
+- WebGL resources are properly managed and cleaned up
+- Testing verifies node registration, context extension, data flow, and resource cleanup
 
 ## Next Steps:
-1. ✅ Create all visual node definitions (Completed)
-2. ✅ Register all visual nodes with the NodeRegistry (Completed)
-3. Integrate with the node system for visual composition
-4. Test all nodes in the actual node editor
-5. Document the node parameters and usage
-6. Optimize WebGL resource usage and rendering performance
-7. Add better error handling and edge case tests
+1. Complete performance optimizations for the visual rendering system
+2. Address TODOs in test files to improve coverage
+3. Enhance type safety for parameter interfaces
+4. Add comprehensive error handling for edge cases
+5. Test the integration in the actual node editor
+6. Document the node parameters and usage
 
 ## Development Insights:
-- Using type assertion with `(this as any)` is an effective way to test private properties
-- Mock objects should carefully replicate the structure of THREE.js objects
-- Duplicate property names in object literals cause linter errors and must be avoided
-- Parameter interfaces need to be consistent between implementation and tests
-- All tests should clear mocks in beforeEach to ensure isolation between tests
-- Test files should validate both basic functionality and edge cases
-- When updating test files, ensure all required properties from interfaces are included in test objects
-- Properly named properties in test mocks should match the actual implementation to avoid confusion
-- When fixing code in test files, watch for cascading type errors that may require additional fixes
-- Shader implementations require careful WebGL resource management to avoid memory leaks
-- Ping-pong rendering technique is essential for simulation-based techniques
-- Adding a `webGLRenderer` property to techniques prevents linter errors with renderer access
-- Properly storing and releasing WebGL resources in the `dispose` method is critical
-- Initialization materials should be created separately from simulation materials
-- Organic visual effects can be achieved by adding subtle noise and time-based animations
-- For FluidSimulation, properties must be declared in the class before use in methods
-- IShaderMaterial interface requires type definition for uniform values, which differs from THREE.ShaderMaterial
-- Helper functions like createShaderMaterial are invaluable to bridge type incompatibilities
-- Domain-specific shaders require deep understanding of the underlying algorithms
-- Good pattern for visual techniques: initialize → createMaterial → updateParams → render → dispose
-- Tests should verify both creation with default parameters and with custom parameters
-- Uniform updaters provide a clean way to animate parameters over time
-- For visual nodes, all parameters must match exactly with the technique parameters in both name and type
-- Always use specific union types for enum-like string parameters instead of generic strings
-- When fixing type errors, examine the underlying interface and follow it precisely
-- For feedback effects, track connection state to reset the effect when inputs are reconnected
-- Process nodes require more careful handling of input texture availability than source nodes
+- Type guards are essential for safe handling of unknown technique objects
+- TDD approach was very effective for defining expected behavior before implementation
+- Topological sorting algorithm ensures proper node processing order
+- The integration layer effectively bridges two complex systems
+- Using Maps for output data storage provides efficient lookup
+- Careful WebGL resource management is critical to prevent memory leaks
+- Proper disposal of resources requires type-safe checks
+- Index files help organize and expose components correctly
+
+## Issues and Lessons Learned:
+- TypeScript type safety requires careful attention, especially with WebGL resources
+- The `unknown` type with type guards provides safer handling than `any`
+- Circular dependencies between modules can cause subtle issues
+- When implementing integration layers, clear interface boundaries are essential
+- Testing complex systems requires careful mocking of dependencies
+- Maintaining type safety while allowing flexible node connections requires careful design
+- Using the proper PortType enum values helps catch type errors at compile time
+- Property paths like `node.state.technique.dispose()` need type checking at each level
+- Testing visual node integration requires understanding of both systems being connected
