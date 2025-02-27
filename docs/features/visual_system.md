@@ -14,6 +14,8 @@
   - ✅ Reaction-Diffusion system with ping-pong rendering
   - ✅ Lenia (continuous cellular automata) with kernel texture generation
   - ✅ Fluid Simulation based on Navier-Stokes equations
+  - ✅ FeedbackLoop implementation with transformations and blending
+  - ✅ FractalNoise implementation with FBM and various noise types
 - ✅ Test files for visual system components:
   - ✅ ViewportRenderer tests
   - ✅ BaseTechnique tests
@@ -21,33 +23,29 @@
   - ✅ ReactionDiffusion tests
   - ✅ Lenia tests
   - ✅ FluidSimulation tests
+  - ✅ FeedbackLoop tests
+  - ✅ FractalNoise tests
 - ✅ Fixed linter errors:
   - ✅ Fixed Metaballs.test.ts references to 'color1'/'color2' properties (replaced with 'customColorA'/'customColorB')
   - ✅ Added missing 'colorMapping' property in Metaballs.test.ts test parameters
   - ✅ Fixed duplicate 'u_curl' property in FluidSimulation.test.ts mock uniforms (renamed second to 'u_curlStrength')
-- ✅ Shader implementations for several techniques:
+  - ✅ Fixed type issues in FluidSimulation with createShaderMaterial helper
+  - ✅ Fixed IUniformWithUpdate interface to ensure 'type' property is never undefined
+- ✅ Shader implementations for all visual techniques:
   - ✅ Vertex and fragment shaders for Metaballs with organic texture and color mapping
   - ✅ Vertex and fragment shaders for Reaction-Diffusion including Gray-Scott model implementation
   - ✅ Vertex and fragment shaders for Lenia with kernel texture generation and continuous cellular automata
-- ✅ Implementation progress on FluidSimulation:
-  - ✅ Core simulation methods implemented (initialize, createRenderTargets, reset)
-  - ✅ Parameter handling and update methods
-  - ✅ Simulation step pipeline based on Navier-Stokes equations
-  - ✅ Rendering methods for visualization
+  - ✅ Complete fluid simulation shaders based on Navier-Stokes equations
+  - ✅ Feedback loop shaders with transformations and various blend modes
+  - ✅ Fractal noise shaders with multiple noise types and domain transformations
 
 **Incomplete:**
-- ❌ Remaining shader implementations:
-  - ❌ Complete shader constants for Fluid Simulation
-  - ❌ Fix type issues in Fluid Simulation shader materials
-- ❌ Remaining technique implementations:
-  - ❌ Feedback loop system
-  - ❌ Fractal noise system
 - ❌ Visual node definitions
 - ❌ Integration with node system
 - ❌ Performance optimizations for visual rendering
 
 **Notes:**
-- The implementation now includes shader code for three of the four main visual techniques.
+- The implementation now includes shader code for all six main visual techniques.
 - All techniques follow the same pattern:
   - Extending BaseTechnique
   - Using ping-pong rendering for simulations
@@ -57,16 +55,17 @@
 - Test files follow TDD approach, clearly defining expected behavior for each technique
 - Each test uses helper classes to access protected/private properties for testing
 - Mocking approach is consistent across all test files for THREE.js objects
-- All linter errors have been fixed in test files:
+- All linter errors have been fixed:
   - Fixed Metaballs test by properly using 'customColorA'/'customColorB' instead of 'color1'/'color2'
   - Added required 'colorMapping' property to properly comply with MetaballParams interface
   - Fixed FluidSimulation test by removing duplicate 'u_curl' property (renamed to 'u_curlStrength')
+  - Fixed type issues in FluidSimulation with a custom helper function to properly convert THREE.ShaderMaterial to IShaderMaterial
+  - Updated the IUniformWithUpdate interface to make 'type' property required instead of optional
 - TODOs are clearly marked throughout the codebase
-- FluidSimulation implementation has progressed significantly:
-  - Core structure and methods are in place
-  - Render targets and ping-pong buffers are implemented
-  - Simulation steps following Navier-Stokes equations are defined
-  - Still need to finish defining shader constants and fixing type issues
+- Completed all planned shader implementations:
+  - FluidSimulation is fully implemented with all shader constants defined
+  - FeedbackLoop includes ping-pong rendering with transformations and custom blend modes
+  - FractalNoise includes multiple noise implementations (simplex, perlin, worley, value) with domain transformations
 
 ## Implementation Notes:
 - ✅ Create minimal placeholder skeleton files with clear TODOs
@@ -76,25 +75,24 @@
 - ✅ All tests use a testable subclass to expose protected/private properties
 - ✅ Tests verify expected behavior for all techniques without actual implementation
 - ✅ Fixed all linter errors in test files
-- ✅ Implemented comprehensive shader code for Metaballs, Reaction-Diffusion, and Lenia techniques
-- ✅ Started implementation of FluidSimulation shaders and simulation pipeline
+- ✅ Implemented comprehensive shader code for all six visual techniques
+- ✅ Completed the implementation of all planned visual techniques
 
 ## Shader Implementation Details:
 - **Metaballs**: Implemented using inverse-square falloff field function with custom threshold and color mapping. Added subtle noise and pulsing effects for a more organic appearance.
 - **Reaction-Diffusion**: Implemented Gray-Scott model with customizable feed and kill rates, discrete Laplacian approximation, and ping-pong buffer technique for simulation steps.
 - **Lenia**: Implemented continuous cellular automata with customizable kernel functions, growth patterns, and visualization options. Includes efficient kernel texture generation.
-- **Fluid Simulation**: Implementing NavierStokes equations with velocity and pressure fields, vorticity confinement, and divergence-free projection. Using ping-pong rendering for simulation steps including advection, pressure solving, and gradient subtraction.
+- **Fluid Simulation**: Implemented NavierStokes equations with velocity and pressure fields, vorticity confinement, and divergence-free projection. Using ping-pong rendering for simulation steps including advection, pressure solving, and gradient subtraction.
+- **FeedbackLoop**: Implemented frame buffer feedback with transformations (translation, rotation, scaling) and various blend modes (add, multiply, screen, overlay). Added color shifting and decay effects for interesting visual patterns.
+- **FractalNoise**: Implemented Fractal Brownian Motion (FBM) with multiple noise types (simplex, perlin, worley, value) and domain transformations (ridged, turbulent, terraced). Includes customizable color modes with grayscale, rainbow, and custom gradient options.
 
 ## Next Steps:
-1. Fix the linter errors in FluidSimulation implementation:
-   - Define all missing shader constants (BASE_VERTEX_SHADER, CLEAR_FRAG_SHADER, etc.)
-   - Add missing property declarations (baseMaterial, addForcesMaterial, addDyeMaterial)
-   - Resolve type issues between ShaderMaterial and IShaderMaterial
-2. Complete the Fluid Simulation shader implementation
-3. Implement the remaining visual techniques (feedback loop, fractal noise)
-4. Create visual node definitions that connect to the node system
-5. Add performance optimizations for high-resolution simulations
-6. Create documentation for each technique and its parameters
+1. Create visual node definitions that connect to the node system
+2. Implement integration with the node system
+3. Add performance optimizations for high-resolution simulations
+4. Add more customization options to existing techniques
+5. Create documentation for each technique and its parameters
+6. Consider adding more visual effects like displacement mapping, bloom, etc.
 
 ## Development Insights:
 - Using type assertion with `(this as any)` is an effective way to test private properties
@@ -114,4 +112,8 @@
 - Organic visual effects can be achieved by adding subtle noise and time-based animations
 - For FluidSimulation, properties must be declared in the class before use in methods
 - IShaderMaterial interface requires type definition for uniform values, which differs from THREE.ShaderMaterial
-- Shader constants need to be defined at the module level rather than inline in methods
+- Helper functions like createShaderMaterial are invaluable to bridge type incompatibilities
+- Domain-specific shaders require deep understanding of the underlying algorithms
+- Good pattern for visual techniques: initialize → createMaterial → updateParams → render → dispose
+- Tests should verify both creation with default parameters and with custom parameters
+- Uniform updaters provide a clean way to animate parameters over time
