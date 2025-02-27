@@ -49,10 +49,10 @@
   - ✅ MetaballsNode implementation with appropriate inputs, outputs, and parameters
   - ✅ ReactionDiffusionNode implementation 
   - ✅ LeniaNode implementation (basic structure)
+  - ✅ Fixed type errors in LeniaNode.ts for initialPattern parameter
 
 **Incomplete:**
 - ❌ Visual node definitions (partially complete):
-  - ❌ Fix type errors in LeniaNode.ts for initialPattern parameter
   - ❌ FluidSimulationNode implementation
   - ❌ FeedbackLoopNode implementation
   - ❌ FractalNoiseNode implementation
@@ -112,7 +112,7 @@
 - Implemented node definitions for:
   - Metaballs visual technique (configured as a source node)
   - Reaction-Diffusion technique (configured as a process node)
-  - Lenia cellular automata technique (needs type error fix)
+  - Lenia cellular automata technique (fixed type errors in implementation)
 - Each node definition includes:
   - Proper input/output ports for texture connections
   - Parameters matching the corresponding technique
@@ -127,6 +127,11 @@
 - Type assertions are needed for proper TypeScript compatibility
 - Need to handle seed textures and custom initialization patterns properly
 - Technique parameter interfaces must be followed exactly to avoid type errors
+- When fixing type errors in node definitions, check both the interface type and actual usage in the technique
+- Use specific union types rather than generic strings for parameters with limited valid values
+- Parameter names in node definitions must precisely match the expected names in technique parameters
+- Adding missing parameters requires understanding both the parameter's purpose and appropriate default values
+- Type checking helps reveal inconsistencies between node definitions and technique implementations
 
 ## Next Steps:
 1. Fix the type error in LeniaNode for the initialPattern parameter
@@ -164,3 +169,6 @@
 - Good pattern for visual techniques: initialize → createMaterial → updateParams → render → dispose
 - Tests should verify both creation with default parameters and with custom parameters
 - Uniform updaters provide a clean way to animate parameters over time
+- For visual nodes, all parameters must match exactly with the technique parameters in both name and type
+- Always use specific union types for enum-like string parameters instead of generic strings
+- When fixing type errors, examine the underlying interface and follow it precisely

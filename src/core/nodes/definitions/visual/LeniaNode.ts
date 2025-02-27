@@ -46,13 +46,31 @@ export const LeniaNode: INodeDefinition = {
       step: 1.0
     },
     {
-      id: 'kernelPeak',
-      name: 'Kernel Peak',
+      id: 'kernelPeakR',
+      name: 'Kernel Peak Location',
       type: 'float',
-      defaultValue: 0.15,
+      defaultValue: 0.5,
       min: 0.01,
       max: 1.0,
       step: 0.01
+    },
+    {
+      id: 'kernelPeakA',
+      name: 'Kernel Peak Value',
+      type: 'float',
+      defaultValue: 1.0,
+      min: 0.1,
+      max: 2.0,
+      step: 0.1
+    },
+    {
+      id: 'kernelShape',
+      name: 'Kernel Shape',
+      type: 'float',
+      defaultValue: 4.0,
+      min: 1.0,
+      max: 10.0,
+      step: 0.5
     },
     {
       id: 'growthCenter',
@@ -71,6 +89,15 @@ export const LeniaNode: INodeDefinition = {
       min: 0.001,
       max: 0.1,
       step: 0.001
+    },
+    {
+      id: 'growthHeight',
+      name: 'Growth Height',
+      type: 'float',
+      defaultValue: 0.15,
+      min: 0.01,
+      max: 0.5,
+      step: 0.01
     },
     {
       id: 'timeStep',
@@ -93,13 +120,24 @@ export const LeniaNode: INodeDefinition = {
       ]
     },
     {
-      id: 'colorA',
+      id: 'colorScheme',
+      name: 'Color Scheme',
+      type: 'select',
+      defaultValue: 'heatmap',
+      options: [
+        { label: 'Grayscale', value: 'grayscale' },
+        { label: 'Heatmap', value: 'heatmap' },
+        { label: 'Custom', value: 'custom' }
+      ]
+    },
+    {
+      id: 'customColorA',
       name: 'Color A',
       type: 'color',
       defaultValue: new THREE.Color(0x000000)
     },
     {
-      id: 'colorB',
+      id: 'customColorB',
       name: 'Color B',
       type: 'color',
       defaultValue: new THREE.Color(0x0088ff)
@@ -151,14 +189,18 @@ export const LeniaNode: INodeDefinition = {
     // Update technique parameters from node params
     technique.updateParams({
       kernelRadius: node.params.kernelRadius as number,
-      kernelPeak: node.params.kernelPeak as number,
+      kernelPeakR: node.params.kernelPeakR as number,
+      kernelPeakA: node.params.kernelPeakA as number,
+      kernelShape: node.params.kernelShape as number,
       growthCenter: node.params.growthCenter as number,
       growthWidth: node.params.growthWidth as number,
+      growthHeight: node.params.growthHeight as number,
       timeStep: node.params.timeStep as number,
-      initialPattern: node.params.initialPattern as string,
-      colorA: node.params.colorA as THREE.Color,
-      colorB: node.params.colorB as THREE.Color,
-      seedTexture: seedTexture || undefined
+      initialPattern: node.params.initialPattern as 'random' | 'circle' | 'glider' | 'custom',
+      colorScheme: node.params.colorScheme as 'grayscale' | 'heatmap' | 'custom',
+      customColorA: node.params.customColorA as THREE.Color,
+      customColorB: node.params.customColorB as THREE.Color,
+      customTexture: seedTexture || undefined
     });
     
     // Render the technique to its internal target
