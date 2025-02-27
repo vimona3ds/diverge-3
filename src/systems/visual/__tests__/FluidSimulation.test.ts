@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FluidSimulation, FluidSimulationParams } from '../techniques/FluidSimulation';
 import { IShaderMaterial } from '../../../core/types/visual';
+import './__mocks__/three'; // Import shared THREE mock
 
 // Create a helper class to access protected properties for testing
 class TestableFluidSimulation extends FluidSimulation {
@@ -245,8 +246,8 @@ describe('FluidSimulation', () => {
     technique.initialize(renderer);
     technique.createMaterial({} as FluidSimulationParams);
     
-    // Add force at position
-    technique.addForce(0.5, 0.5, 0.1, 0.2);
+    // Add force at position with renderer parameter
+    technique.addForce(0.5, 0.5, 0.1, 0.2, renderer);
     
     // This is mostly a coverage test, as we can't easily verify the internal state
   });
@@ -255,9 +256,9 @@ describe('FluidSimulation', () => {
     technique.initialize(renderer);
     technique.createMaterial({} as FluidSimulationParams);
     
-    // Add color splat at position
+    // Add color splat at position with renderer parameter
     const color = new THREE.Color(1, 0, 0);
-    technique.addColorSplat(0.5, 0.5, color, 0.3);
+    technique.addColorSplat(0.5, 0.5, color, 0.3, renderer);
     
     // This is mostly a coverage test, as we can't easily verify the internal state
   });
@@ -281,8 +282,8 @@ describe('FluidSimulation', () => {
     technique.initialize(renderer);
     technique.createMaterial({} as FluidSimulationParams);
     
-    // Reset the simulation
-    technique.reset();
+    // Reset the simulation with renderer parameter
+    technique.reset(renderer);
     
     // This is mostly a coverage test, as we can't easily verify the internal state
   });

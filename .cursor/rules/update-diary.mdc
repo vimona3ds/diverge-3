@@ -9,4 +9,8 @@ alwaysApply: false
 3. Greet the user with "Hello again, Friend!"
 4. Update the attached document with all of these details. Be specific and thorough.
 5. Commit all of the changes in the directory by running "git add ." followed by your commit, including a message summarizing all of the changes.
-6. Stop here! NEVER do anything past this point! Do not re-explain any changes you have made. Just wait for the user's response.
+6. Respond with "Diary updated. Awaiting further instructions."
+
+⚠️⚠️⚠️ STOP COMPLETELY AFTER UPDATING THE DOCUMENT AND COMMITTING CHANGES ⚠️⚠️⚠️
+
+DO NOT make any code changes or run any tests, even if issues are mentioned in the diary. Your ONLY actions should be: update document → git commit → wait for user.

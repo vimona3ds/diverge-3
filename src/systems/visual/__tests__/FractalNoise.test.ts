@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FractalNoise, FractalNoiseParams } from '../techniques/FractalNoise';
 import { IShaderMaterial } from '../../../core/types/visual';
+import './__mocks__/three'; // Import shared THREE mock
 
 // Create a helper class to access protected properties for testing
 class TestableFractalNoise extends FractalNoise {

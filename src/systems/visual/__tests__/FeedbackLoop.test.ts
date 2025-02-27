@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FeedbackLoop, FeedbackLoopParams } from '../techniques/FeedbackLoop';
 import { IShaderMaterial } from '../../../core/types/visual';
+import './__mocks__/three'; // Import shared THREE mock
 
 // Create a helper class to access protected properties for testing
 class TestableFeedbackLoop extends FeedbackLoop {

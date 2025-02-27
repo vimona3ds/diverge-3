@@ -21,7 +21,9 @@ export abstract class BaseTechnique implements IVisualTechnique {
     // Create a scene with orthographic camera for 2D rendering
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-    this.camera.position.z = 1;
+    if (this.camera && this.camera.position) {
+      this.camera.position.z = 1;
+    }
     
     // Create a full-screen quad
     const geometry = new THREE.PlaneGeometry(2, 2);

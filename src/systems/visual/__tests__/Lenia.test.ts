@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Lenia, LeniaParams } from '../techniques/Lenia';
 import { IShaderMaterial } from '../../../core/types/visual';
+import './__mocks__/three'; // Import shared mock
 
 // Create a helper class to access protected properties for testing
 class TestableLenia extends Lenia {
