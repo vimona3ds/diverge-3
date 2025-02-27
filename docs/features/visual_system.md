@@ -44,7 +44,7 @@
   - ✅ Parameters can be properly updated during runtime
   - ✅ Render target management works correctly with ping-pong buffers
   - ✅ Each technique successfully renders to appropriate targets
-- ✅ Visual node definitions (in progress):
+- ✅ Visual node definitions:
   - ✅ Test file for visual node registration and functionality
   - ✅ MetaballsNode implementation with appropriate inputs, outputs, and parameters
   - ✅ ReactionDiffusionNode implementation 
@@ -52,11 +52,10 @@
   - ✅ Fixed type errors in LeniaNode.ts for initialPattern parameter
   - ✅ FluidSimulationNode implementation
   - ✅ FeedbackLoopNode implementation
+  - ✅ FractalNoiseNode implementation
   - ✅ index.ts file to export all visual nodes
 
 **Incomplete:**
-- ❌ Visual node definitions (partially complete):
-  - ❌ FractalNoiseNode implementation
 - ❌ Integration with node system
 - ❌ Performance optimizations for visual rendering
 - ❌ Complete TODOs in some test files to improve coverage
@@ -97,7 +96,7 @@
 - ✅ Implemented comprehensive shader code for all six visual techniques
 - ✅ Completed the implementation of all planned visual techniques
 - ✅ All techniques properly implement WebGL resource management with dispose methods
-- ✅ Created visual node definitions for connecting techniques to the node system (in progress)
+- ✅ Created visual node definitions for connecting techniques to the node system (completed)
 
 ## Shader Implementation Details:
 - **Metaballs**: Implemented using inverse-square falloff field function with custom threshold and color mapping. Added subtle noise and pulsing effects for a more organic appearance.
@@ -109,18 +108,26 @@
 
 ## Current Progress on Node Integration:
 - Created test file for visual nodes to verify registration and functionality
-- Implemented node definitions for:
+- Implemented all node definitions:
   - Metaballs visual technique (configured as a source node)
   - Reaction-Diffusion technique (configured as a process node)
   - Lenia cellular automata technique (fixed type errors in implementation)
   - FluidSimulation technique (configured as a source node)
   - FeedbackLoop technique (configured as a process node with input tracking)
+  - FractalNoise technique (configured as a source node with parameters matching the FractalNoise technique)
 - Each node definition includes:
   - Proper input/output ports for texture connections
   - Parameters matching the corresponding technique
   - Initialization method to set up the technique
   - Process method that updates the technique with node parameters
   - Resource management with proper WebGL disposal
+
+## Recent Progress:
+- ✅ Implemented the FractalNoiseNode to complete the set of visual nodes
+- ✅ Added the proper parameters to match the FractalNoise technique
+- ✅ Created comprehensive test cases for FractalNoiseNode
+- ✅ Added the FractalNoiseNode to the visual node index file for proper registration
+- ✅ Completed all visual node definitions, making them ready for integration with the node system
 
 ## Issues and Lessons Learned:
 - Need to carefully match parameter names and types between node definitions and technique classes
@@ -136,15 +143,19 @@
 - Type checking helps reveal inconsistencies between node definitions and technique implementations
 - Properties like 'required' that don't exist in IInputPort interface can cause linter errors
 - FeedbackLoop needs special handling to track input connection state and reset when reconnected
+- When testing technique nodes, be careful with circular dependencies (especially when importing the node and the technique in tests)
+- Using `(technique as any).getOutputTexture()` is a workaround - the BaseTechnique class should ideally have this method explicitly defined
+- Test failures can happen on type checking for instances when using mocked objects - inspect the actual values to create appropriate assertions
+- When working with mocks, sometimes it's better to check individual properties rather than use toHaveBeenCalledWith for the entire object
 
 ## Next Steps:
-1. Create the remaining visual node definition:
-   - FractalNoiseNode for procedural noise generation
-2. Register all visual nodes with the NodeRegistry
+1. ✅ Create all visual node definitions (Completed)
+2. ✅ Register all visual nodes with the NodeRegistry (Completed)
 3. Integrate with the node system for visual composition
 4. Test all nodes in the actual node editor
 5. Document the node parameters and usage
 6. Optimize WebGL resource usage and rendering performance
+7. Add better error handling and edge case tests
 
 ## Development Insights:
 - Using type assertion with `(this as any)` is an effective way to test private properties

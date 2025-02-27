@@ -4,5 +4,6 @@ export { ReactionDiffusionNode } from './ReactionDiffusionNode';
 export { LeniaNode } from './LeniaNode';
 export { FluidSimulationNode } from './FluidSimulationNode';
 export { FeedbackLoopNode } from './FeedbackLoopNode';
+export { FractalNoiseNode } from './FractalNoiseNode';
 
 // TODO: Add FractalNoiseNode when it is implemented 
