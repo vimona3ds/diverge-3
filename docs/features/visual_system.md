@@ -50,13 +50,13 @@
   - ✅ ReactionDiffusionNode implementation 
   - ✅ LeniaNode implementation (basic structure)
   - ✅ Fixed type errors in LeniaNode.ts for initialPattern parameter
+  - ✅ FluidSimulationNode implementation
+  - ✅ FeedbackLoopNode implementation
+  - ✅ index.ts file to export all visual nodes
 
 **Incomplete:**
 - ❌ Visual node definitions (partially complete):
-  - ❌ FluidSimulationNode implementation
-  - ❌ FeedbackLoopNode implementation
   - ❌ FractalNoiseNode implementation
-  - ❌ index.ts file to export all visual nodes
 - ❌ Integration with node system
 - ❌ Performance optimizations for visual rendering
 - ❌ Complete TODOs in some test files to improve coverage
@@ -113,6 +113,8 @@
   - Metaballs visual technique (configured as a source node)
   - Reaction-Diffusion technique (configured as a process node)
   - Lenia cellular automata technique (fixed type errors in implementation)
+  - FluidSimulation technique (configured as a source node)
+  - FeedbackLoop technique (configured as a process node with input tracking)
 - Each node definition includes:
   - Proper input/output ports for texture connections
   - Parameters matching the corresponding technique
@@ -132,19 +134,17 @@
 - Parameter names in node definitions must precisely match the expected names in technique parameters
 - Adding missing parameters requires understanding both the parameter's purpose and appropriate default values
 - Type checking helps reveal inconsistencies between node definitions and technique implementations
+- Properties like 'required' that don't exist in IInputPort interface can cause linter errors
+- FeedbackLoop needs special handling to track input connection state and reset when reconnected
 
 ## Next Steps:
-1. Fix the type error in LeniaNode for the initialPattern parameter
-2. Create the remaining three visual node definitions:
-   - FluidSimulationNode for fluid dynamics simulation
-   - FeedbackLoopNode for visual feedback effects
+1. Create the remaining visual node definition:
    - FractalNoiseNode for procedural noise generation
-3. Create an index.ts file that exports all visual nodes
-4. Register all visual nodes with the NodeRegistry
-5. Integrate with the node system for visual composition
-6. Test all nodes in the actual node editor
-7. Document the node parameters and usage
-8. Optimize WebGL resource usage and rendering performance
+2. Register all visual nodes with the NodeRegistry
+3. Integrate with the node system for visual composition
+4. Test all nodes in the actual node editor
+5. Document the node parameters and usage
+6. Optimize WebGL resource usage and rendering performance
 
 ## Development Insights:
 - Using type assertion with `(this as any)` is an effective way to test private properties
@@ -172,3 +172,5 @@
 - For visual nodes, all parameters must match exactly with the technique parameters in both name and type
 - Always use specific union types for enum-like string parameters instead of generic strings
 - When fixing type errors, examine the underlying interface and follow it precisely
+- For feedback effects, track connection state to reset the effect when inputs are reconnected
+- Process nodes require more careful handling of input texture availability than source nodes
