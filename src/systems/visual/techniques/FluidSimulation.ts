@@ -102,8 +102,57 @@ export class FluidSimulation extends BaseTechnique {
     this.createRenderTargets();
     this.createShaderMaterials();
     
-    // TODO: Initialize the simulation state
-    // Clear all the render targets to start with a clean state
+    // Clear all render targets to start with a clean state
+    if (this.clearMaterial) {
+      this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+      
+      // Clear velocity
+      if (this.velocityDoubleFBO) {
+        this.mesh!.material = this.clearMaterial;
+        renderer.setRenderTarget(this.velocityDoubleFBO[0]);
+        renderer.render(this.scene, this.camera);
+        renderer.setRenderTarget(this.velocityDoubleFBO[1]);
+        renderer.render(this.scene, this.camera);
+      }
+      
+      // Clear pressure
+      if (this.pressureDoubleFBO) {
+        this.mesh!.material = this.clearMaterial;
+        renderer.setRenderTarget(this.pressureDoubleFBO[0]);
+        renderer.render(this.scene, this.camera);
+        renderer.setRenderTarget(this.pressureDoubleFBO[1]);
+        renderer.render(this.scene, this.camera);
+      }
+      
+      // Clear density
+      if (this.densityDoubleFBO) {
+        this.mesh!.material = this.clearMaterial;
+        renderer.setRenderTarget(this.densityDoubleFBO[0]);
+        renderer.render(this.scene, this.camera);
+        renderer.setRenderTarget(this.densityDoubleFBO[1]);
+        renderer.render(this.scene, this.camera);
+      }
+      
+      // Clear divergence
+      if (this.divergenceRenderTarget) {
+        this.mesh!.material = this.clearMaterial;
+        renderer.setRenderTarget(this.divergenceRenderTarget);
+        renderer.render(this.scene, this.camera);
+      }
+      
+      // Clear curl
+      if (this.curlRenderTarget) {
+        this.mesh!.material = this.clearMaterial;
+        renderer.setRenderTarget(this.curlRenderTarget);
+        renderer.render(this.scene, this.camera);
+      }
+      
+      // Reset to default render target
+      renderer.setRenderTarget(null);
+    }
+    
+    // Initialize simulation clock
+    this.lastUpdateTime = performance.now();
     
     this.simInitialized = true;
   }
@@ -145,280 +194,153 @@ export class FluidSimulation extends BaseTechnique {
   }
   
   /**
-   * Create all shader materials for the simulation steps
+   * Create all shader materials for the fluid simulation
    */
   private createShaderMaterials(): void {
-    // TODO: Create actual shader materials for each simulation step
-    // This is a placeholder implementation with simple vertex and fragment shaders
-    
-    const baseVertexShader = `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `;
-    
-    // Advection shader (moves quantities along the velocity field)
-    const advectionFragmentShader = `
-      // TODO: Replace with actual advection shader code
-      uniform sampler2D u_velocity;
-      uniform sampler2D u_source;
-      uniform float u_dissipation;
-      uniform vec2 u_texelSize;
-      uniform float u_dt;
-      
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 pos = vUv - u_dt * texture2D(u_velocity, vUv).xy * u_texelSize;
-        gl_FragColor = u_dissipation * texture2D(u_source, pos);
-      }
-    `;
-    
+    // Base material for rendering to a render target
+    this.baseMaterial = new THREE.ShaderMaterial({
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: '',
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Clear material
+    this.clearMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        u_clearColor: { value: new THREE.Vector4(0, 0, 0, 1) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: CLEAR_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Advection material
     this.advectionMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: advectionFragmentShader,
       uniforms: {
         u_velocity: { value: null },
         u_source: { value: null },
+        u_dt: { value: 0.0 },
         u_dissipation: { value: 1.0 },
         u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
-        u_dt: { value: 0.016 }
-      }
-    }) as IShaderMaterial;
-    
-    // Divergence shader (calculates divergence of velocity field)
-    const divergenceFragmentShader = `
-      // TODO: Replace with actual divergence shader code
-      uniform sampler2D u_velocity;
-      uniform vec2 u_texelSize;
-      
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 texelSize = u_texelSize;
-        
-        float n = texture2D(u_velocity, vUv + vec2(0, texelSize.y)).y;
-        float s = texture2D(u_velocity, vUv - vec2(0, texelSize.y)).y;
-        float e = texture2D(u_velocity, vUv + vec2(texelSize.x, 0)).x;
-        float w = texture2D(u_velocity, vUv - vec2(texelSize.x, 0)).x;
-        
-        float div = 0.5 * (e - w + n - s);
-        gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
-      }
-    `;
-    
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: ADVECTION_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Divergence material
     this.divergenceMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: divergenceFragmentShader,
       uniforms: {
         u_velocity: { value: null },
-        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) }
-      }
-    }) as IShaderMaterial;
-    
-    // Curl shader (calculates curl of velocity field)
-    const curlFragmentShader = `
-      // TODO: Replace with actual curl shader code
-      uniform sampler2D u_velocity;
-      uniform vec2 u_texelSize;
-      
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 texelSize = u_texelSize;
-        
-        float n = texture2D(u_velocity, vUv + vec2(0, texelSize.y)).x;
-        float s = texture2D(u_velocity, vUv - vec2(0, texelSize.y)).x;
-        float e = texture2D(u_velocity, vUv + vec2(texelSize.x, 0)).y;
-        float w = texture2D(u_velocity, vUv - vec2(texelSize.x, 0)).y;
-        
-        float curl = (e - w) - (n - s);
-        gl_FragColor = vec4(curl, 0.0, 0.0, 1.0);
-      }
-    `;
-    
-    this.curlMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: curlFragmentShader,
-      uniforms: {
-        u_velocity: { value: null },
-        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) }
-      }
-    }) as IShaderMaterial;
-    
-    // Vorticity shader (adds curl force to velocity field)
-    const vorticityFragmentShader = `
-      // TODO: Replace with actual vorticity shader code
-      uniform sampler2D u_velocity;
-      uniform sampler2D u_curl;
-      uniform float u_curlForce;
-      uniform vec2 u_texelSize;
-      uniform float u_dt;
-      
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 texelSize = u_texelSize;
-        float curl = texture2D(u_curl, vUv).x;
-        
-        // Calculate force direction based on curl gradient
-        float n = texture2D(u_curl, vUv + vec2(0, texelSize.y)).x;
-        float s = texture2D(u_curl, vUv - vec2(0, texelSize.y)).x;
-        float e = texture2D(u_curl, vUv + vec2(texelSize.x, 0)).x;
-        float w = texture2D(u_curl, vUv - vec2(texelSize.x, 0)).x;
-        
-        vec2 force = vec2(abs(n) - abs(s), abs(e) - abs(w));
-        force = normalize(force + 0.00001) * u_curlForce * curl;
-        
-        vec2 velocity = texture2D(u_velocity, vUv).xy;
-        gl_FragColor = vec4(velocity + force * u_dt, 0.0, 1.0);
-      }
-    `;
-    
-    this.vorticityMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: vorticityFragmentShader,
-      uniforms: {
-        u_velocity: { value: null },
-        u_curl: { value: null },
-        u_curlForce: { value: this.params.curl },
         u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
-        u_dt: { value: 0.016 }
-      }
-    }) as IShaderMaterial;
-    
-    // Pressure shader (solves pressure equation)
-    const pressureFragmentShader = `
-      // TODO: Replace with actual pressure solver shader code
-      uniform sampler2D u_pressure;
-      uniform sampler2D u_divergence;
-      uniform vec2 u_texelSize;
-      
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 texelSize = u_texelSize;
-        
-        float n = texture2D(u_pressure, vUv + vec2(0, texelSize.y)).x;
-        float s = texture2D(u_pressure, vUv - vec2(0, texelSize.y)).x;
-        float e = texture2D(u_pressure, vUv + vec2(texelSize.x, 0)).x;
-        float w = texture2D(u_pressure, vUv - vec2(texelSize.x, 0)).x;
-        
-        float divergence = texture2D(u_divergence, vUv).x;
-        float pressure = (n + s + e + w - divergence) * 0.25;
-        
-        gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
-      }
-    `;
-    
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: DIVERGENCE_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Pressure material
     this.pressureMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: pressureFragmentShader,
       uniforms: {
         u_pressure: { value: null },
         u_divergence: { value: null },
-        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) }
-      }
-    }) as IShaderMaterial;
-    
-    // Gradient subtraction shader (apply pressure gradient to velocity)
-    const gradientSubtractFragmentShader = `
-      // TODO: Replace with actual gradient subtraction shader code
-      uniform sampler2D u_pressure;
-      uniform sampler2D u_velocity;
-      uniform vec2 u_texelSize;
-      
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 texelSize = u_texelSize;
-        
-        float n = texture2D(u_pressure, vUv + vec2(0, texelSize.y)).x;
-        float s = texture2D(u_pressure, vUv - vec2(0, texelSize.y)).x;
-        float e = texture2D(u_pressure, vUv + vec2(texelSize.x, 0)).x;
-        float w = texture2D(u_pressure, vUv - vec2(texelSize.x, 0)).x;
-        
-        vec2 velocity = texture2D(u_velocity, vUv).xy;
-        vec2 gradient = vec2(e - w, n - s) * 0.5;
-        
-        gl_FragColor = vec4(velocity - gradient, 0.0, 1.0);
-      }
-    `;
-    
+        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: PRESSURE_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Gradient material
     this.gradientSubtractMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: gradientSubtractFragmentShader,
       uniforms: {
         u_pressure: { value: null },
         u_velocity: { value: null },
-        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) }
-      }
-    }) as IShaderMaterial;
-    
-    // Clear shader
-    const clearFragmentShader = `
-      uniform vec4 u_clearColor;
-      
-      void main() {
-        gl_FragColor = u_clearColor;
-      }
-    `;
-    
-    this.clearMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: clearFragmentShader,
+        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: GRADIENT_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Curl material
+    this.curlMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        u_clearColor: { value: new THREE.Vector4(0, 0, 0, 1) }
-      }
-    }) as IShaderMaterial;
-    
-    // Display shader for visualization
-    const displayFragmentShader = `
-      uniform sampler2D u_density;
-      uniform int u_colorMode;
-      uniform vec3 u_colorA;
-      uniform vec3 u_colorB;
-      
-      varying vec2 vUv;
-      
-      vec3 hsl2rgb(vec3 hsl) {
-        vec3 rgb = clamp(abs(mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
-        return hsl.z + hsl.y * (rgb - 0.5) * (1.0 - abs(2.0 * hsl.z - 1.0));
-      }
-      
-      void main() {
-        vec4 density = texture2D(u_density, vUv);
-        float value = length(density.rgb);
-        
-        vec3 color;
-        if (u_colorMode == 0) { // Rainbow
-          float hue = mod(density.r * 0.7 + density.g * 0.2 + density.b * 0.3, 1.0);
-          color = hsl2rgb(vec3(hue, 1.0, 0.5));
-        } else if (u_colorMode == 1) { // Custom
-          color = mix(u_colorA, u_colorB, value);
-        } else { // Monochrome
-          color = vec3(value);
-        }
-        
-        gl_FragColor = vec4(color, 1.0);
-      }
-    `;
-    
-    this.displayMaterial = new THREE.ShaderMaterial({
-      vertexShader: baseVertexShader,
-      fragmentShader: displayFragmentShader,
+        u_velocity: { value: null },
+        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: CURL_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Vorticity material
+    this.vorticityMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        u_velocity: { value: null },
+        u_curl: { value: null },
+        u_curl_strength: { value: this.params.curl },
+        u_dt: { value: 0.0 },
+        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: VORTICITY_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Add forces material
+    this.addForcesMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        u_velocity: { value: null },
+        u_force: { value: new THREE.Vector2(0, 0) },
+        u_point: { value: new THREE.Vector2(0, 0) },
+        u_radius: { value: this.params.splatRadius * 0.5 },
+        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: ADD_FORCE_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Add color/dye material
+    this.addDyeMaterial = new THREE.ShaderMaterial({
       uniforms: {
         u_density: { value: null },
-        u_colorMode: { 
-          value: this.params.colorMode === 'rainbow' ? 0 : 
-                 this.params.colorMode === 'custom' ? 1 : 2 
-        },
+        u_color: { value: new THREE.Vector4(1, 1, 1, 1) },
+        u_point: { value: new THREE.Vector2(0, 0) },
+        u_radius: { value: this.params.splatRadius * this.params.splatRadius },
+        u_texelSize: { value: new THREE.Vector2(1.0 / this.params.resolution, 1.0 / this.params.resolution) },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: ADD_DYE_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Display material for rendering the final result
+    this.displayMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        u_density: { value: null },
+        u_velocity: { value: null },
+        u_colorMode: { value: 0 },
         u_colorA: { value: this.params.colorA },
-        u_colorB: { value: this.params.colorB }
-      }
-    }) as IShaderMaterial;
+        u_colorB: { value: this.params.colorB },
+        u_time: { value: 0.0 },
+      },
+      vertexShader: BASE_VERTEX_SHADER,
+      fragmentShader: DISPLAY_FRAG_SHADER,
+      depthTest: false,
+      depthWrite: false,
+    });
   }
   
   /**
@@ -453,7 +375,7 @@ export class FluidSimulation extends BaseTechnique {
     
     // Update material uniforms
     if (this.vorticityMaterial) {
-      this.vorticityMaterial.uniforms.u_curlForce.value = params.curl;
+      this.vorticityMaterial.uniforms.u_curl_strength.value = params.curl;
     }
     
     if (this.displayMaterial) {
@@ -521,13 +443,98 @@ export class FluidSimulation extends BaseTechnique {
     // Convert deltaTime to seconds and clamp to avoid instability
     const dt = Math.min(deltaTime / 1000, 0.016);
     
-    // TODO: Implement the full Navier-Stokes solver steps
+    // Update shader uniforms with current time step
+    if (this.advectionMaterial) this.advectionMaterial.uniforms.u_dt.value = dt;
+    if (this.vorticityMaterial) this.vorticityMaterial.uniforms.u_dt.value = dt;
+    
     // 1. Advect velocity
-    // 2. Apply external forces
-    // 3. Calculate divergence
-    // 4. Solve pressure
-    // 5. Subtract pressure gradient
-    // 6. Advect density
+    if (this.advectionMaterial) {
+      this.advectionMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      this.advectionMaterial.uniforms.u_source.value = this.velocityDoubleFBO[0].texture;
+      this.advectionMaterial.uniforms.u_dissipation.value = this.params.velocityDissipation;
+      
+      this.mesh!.material = this.advectionMaterial;
+      renderer.setRenderTarget(this.velocityDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+      swap(this.velocityDoubleFBO);
+    }
+    
+    // 2. Calculate curl
+    if (this.curlMaterial) {
+      this.curlMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      
+      this.mesh!.material = this.curlMaterial;
+      renderer.setRenderTarget(this.curlRenderTarget);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    // 3. Apply vorticity confinement (adds swirls)
+    if (this.vorticityMaterial && this.curlRenderTarget) {
+      this.vorticityMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      this.vorticityMaterial.uniforms.u_curl.value = this.curlRenderTarget.texture;
+      
+      this.mesh!.material = this.vorticityMaterial;
+      renderer.setRenderTarget(this.velocityDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+      swap(this.velocityDoubleFBO);
+    }
+    
+    // 4. Calculate divergence
+    if (this.divergenceMaterial) {
+      this.divergenceMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      
+      this.mesh!.material = this.divergenceMaterial;
+      renderer.setRenderTarget(this.divergenceRenderTarget);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    // 5. Clear pressure
+    if (this.clearMaterial && this.pressureDoubleFBO) {
+      this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+      
+      this.mesh!.material = this.clearMaterial;
+      renderer.setRenderTarget(this.pressureDoubleFBO[0]);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    // 6. Solve pressure (multiple iterations for accuracy)
+    if (this.pressureMaterial && this.pressureDoubleFBO && this.divergenceRenderTarget) {
+      this.pressureMaterial.uniforms.u_divergence.value = this.divergenceRenderTarget.texture;
+      
+      // Jacobi iteration - typically 20-40 iterations
+      const iterations = this.params.pressureIterations;
+      for (let i = 0; i < iterations; i++) {
+        this.pressureMaterial.uniforms.u_pressure.value = this.pressureDoubleFBO[0].texture;
+        
+        this.mesh!.material = this.pressureMaterial;
+        renderer.setRenderTarget(this.pressureDoubleFBO[1]);
+        renderer.render(this.scene, this.camera);
+        swap(this.pressureDoubleFBO);
+      }
+    }
+    
+    // 7. Subtract pressure gradient to make velocity divergence-free
+    if (this.gradientSubtractMaterial && this.velocityDoubleFBO && this.pressureDoubleFBO) {
+      this.gradientSubtractMaterial.uniforms.u_pressure.value = this.pressureDoubleFBO[0].texture;
+      this.gradientSubtractMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      
+      this.mesh!.material = this.gradientSubtractMaterial;
+      renderer.setRenderTarget(this.velocityDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+      swap(this.velocityDoubleFBO);
+    }
+    
+    // 8. Advect density/color
+    if (this.advectionMaterial && this.densityDoubleFBO) {
+      this.advectionMaterial.uniforms.u_velocity.value = this.velocityDoubleFBO[0].texture;
+      this.advectionMaterial.uniforms.u_source.value = this.densityDoubleFBO[0].texture;
+      this.advectionMaterial.uniforms.u_dissipation.value = this.params.densityDissipation;
+      
+      this.mesh!.material = this.advectionMaterial;
+      renderer.setRenderTarget(this.densityDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+      swap(this.densityDoubleFBO);
+    }
   }
   
   /**
@@ -536,9 +543,67 @@ export class FluidSimulation extends BaseTechnique {
    * @param y Normalized y position (0-1)
    * @param dx Force x component
    * @param dy Force y component
+   * @param renderer The WebGL renderer to use
    */
-  public addForce(x: number, y: number, dx: number, dy: number): void {
-    // TODO: Implement applying external forces to the fluid
+  public addForce(x: number, y: number, dx: number, dy: number, renderer: THREE.WebGLRenderer): void {
+    if (!this.velocityDoubleFBO || !this.initialized) return;
+    
+    // Create a temporary shader material for applying force
+    const forceShader = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        
+        uniform sampler2D u_velocity;
+        uniform vec2 u_point;
+        uniform vec2 u_force;
+        uniform float u_radius;
+        
+        varying vec2 vUv;
+        
+        void main() {
+          vec2 uv = vUv;
+          vec2 coord = u_point;
+          
+          // Calculate distance to force point
+          vec2 diff = uv - coord;
+          float d = length(diff);
+          
+          // Get existing velocity
+          vec2 velocity = texture2D(u_velocity, uv).xy;
+          
+          // Apply force using a smooth falloff based on distance
+          float influence = exp(-d * d / u_radius);
+          velocity += u_force * influence;
+          
+          gl_FragColor = vec4(velocity, 0.0, 1.0);
+        }
+      `,
+      uniforms: {
+        u_velocity: { value: this.velocityDoubleFBO[0].texture },
+        u_point: { value: new THREE.Vector2(x, y) },
+        u_force: { value: new THREE.Vector2(dx, dy) },
+        u_radius: { value: this.params.splatRadius * 0.5 }
+      }
+    });
+    
+    // Apply force to velocity field
+    this.mesh!.material = forceShader;
+    renderer.setRenderTarget(this.velocityDoubleFBO[1]);
+    renderer.render(this.scene, this.camera);
+    
+    // Swap buffers to use the updated velocity
+    [this.velocityDoubleFBO[0], this.velocityDoubleFBO[1]] = 
+      [this.velocityDoubleFBO[1], this.velocityDoubleFBO[0]];
+    
+    // Clean up the temporary material
+    forceShader.dispose();
   }
   
   /**
@@ -547,9 +612,70 @@ export class FluidSimulation extends BaseTechnique {
    * @param y Normalized y position (0-1)
    * @param color The color to add
    * @param radius The radius of the splat
+   * @param renderer The WebGL renderer to use
    */
-  public addColorSplat(x: number, y: number, color: THREE.Color, radius: number = this.params.splatRadius): void {
-    // TODO: Implement adding color splats to the fluid
+  public addColorSplat(x: number, y: number, color: THREE.Color, radius: number = this.params.splatRadius, renderer: THREE.WebGLRenderer): void {
+    if (!this.densityDoubleFBO || !this.initialized) return;
+    
+    // Create a temporary shader material for adding color
+    const colorSplatShader = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        
+        uniform sampler2D u_density;
+        uniform vec2 u_point;
+        uniform vec3 u_color;
+        uniform float u_radius;
+        
+        varying vec2 vUv;
+        
+        void main() {
+          vec2 uv = vUv;
+          vec2 coord = u_point;
+          
+          // Calculate distance to splat point
+          vec2 diff = uv - coord;
+          float d = length(diff);
+          
+          // Get existing density
+          vec4 density = texture2D(u_density, uv);
+          
+          // Apply color splat using a smooth falloff based on distance
+          float influence = exp(-d * d / u_radius);
+          vec3 finalColor = density.rgb + u_color * influence;
+          
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      `,
+      uniforms: {
+        u_density: { value: this.densityDoubleFBO[0].texture },
+        u_point: { value: new THREE.Vector2(x, y) },
+        u_color: { value: color },
+        u_radius: { value: radius * radius }
+      }
+    });
+    
+    // Apply color to density field
+    this.mesh!.material = colorSplatShader;
+    renderer.setRenderTarget(this.densityDoubleFBO[1]);
+    renderer.render(this.scene, this.camera);
+    
+    // Swap buffers to use the updated density
+    [this.densityDoubleFBO[0], this.densityDoubleFBO[1]] = 
+      [this.densityDoubleFBO[1], this.densityDoubleFBO[0]];
+    
+    // Add a bit of force in the same location to make the fluid move
+    this.addForce(x, y, 0, 0.005, renderer);
+    
+    // Clean up the temporary material
+    colorSplatShader.dispose();
   }
   
   /**
@@ -582,9 +708,59 @@ export class FluidSimulation extends BaseTechnique {
   
   /**
    * Reset the simulation
+   * @param renderer The WebGL renderer to use
    */
-  public reset(): void {
-    // TODO: Implement reset logic to reinitialize the simulation state
+  public reset(renderer: THREE.WebGLRenderer): void {
+    if (!this.initialized || !this.clearMaterial) return;
+    
+    // Clear all simulation render targets
+    this.clearMaterial.uniforms.u_clearColor.value.set(0, 0, 0, 1);
+    
+    if (this.velocityDoubleFBO) {
+      this.mesh!.material = this.clearMaterial;
+      renderer.setRenderTarget(this.velocityDoubleFBO[0]);
+      renderer.render(this.scene, this.camera);
+      renderer.setRenderTarget(this.velocityDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    if (this.pressureDoubleFBO) {
+      this.mesh!.material = this.clearMaterial;
+      renderer.setRenderTarget(this.pressureDoubleFBO[0]);
+      renderer.render(this.scene, this.camera);
+      renderer.setRenderTarget(this.pressureDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    if (this.densityDoubleFBO) {
+      this.mesh!.material = this.clearMaterial;
+      renderer.setRenderTarget(this.densityDoubleFBO[0]);
+      renderer.render(this.scene, this.camera);
+      renderer.setRenderTarget(this.densityDoubleFBO[1]);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    if (this.divergenceRenderTarget) {
+      this.mesh!.material = this.clearMaterial;
+      renderer.setRenderTarget(this.divergenceRenderTarget);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    if (this.curlRenderTarget) {
+      this.mesh!.material = this.clearMaterial;
+      renderer.setRenderTarget(this.curlRenderTarget);
+      renderer.render(this.scene, this.camera);
+    }
+    
+    // Reset simulation clock
+    this.lastUpdateTime = performance.now();
+    
+    // Clear any stored forces or positions
+    this.pointerPositions = {};
+    this.pointerForces = {};
+    
+    // Reset to default render target
+    renderer.setRenderTarget(null);
   }
   
   /**
